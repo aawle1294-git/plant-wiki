@@ -1,0 +1,786 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>5등분 복불복 룰렛</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;600;800&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: 'Noto Sans KR', sans-serif;
+  background: linear-gradient(135deg, #0f0c29 0%, #1a1a3e 40%, #24243e 100%);
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  color: #e0e0e0;
+  overflow-x: hidden;
+}
+
+/* ── Header ── */
+.header {
+  width: 100%;
+  max-width: 700px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 24px 20px 8px;
+}
+
+.header h1 {
+  font-size: 1.6rem;
+  font-weight: 800;
+  background: linear-gradient(90deg, #f7971e, #ffd200);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  letter-spacing: -0.5px;
+}
+
+.btn-settings {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 20px;
+  border: 1px solid rgba(255,210,0,0.35);
+  border-radius: 12px;
+  background: rgba(255,255,255,0.06);
+  backdrop-filter: blur(12px);
+  color: #ffd200;
+  font-size: 0.95rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.25s ease;
+  font-family: inherit;
+}
+
+.btn-settings:hover {
+  background: rgba(255,210,0,0.12);
+  border-color: rgba(255,210,0,0.6);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 20px rgba(255,210,0,0.15);
+}
+
+/* ── Roulette Area ── */
+.roulette-container {
+  position: relative;
+  margin: 20px auto 10px;
+  width: 370px;
+  height: 370px;
+}
+
+canvas#wheelCanvas {
+  width: 370px;
+  height: 370px;
+  filter: drop-shadow(0 8px 32px rgba(0,0,0,0.45));
+}
+
+/* Pointer */
+.pointer {
+  position: absolute;
+  top: -18px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 10;
+  width: 0;
+  height: 0;
+  border-left: 18px solid transparent;
+  border-right: 18px solid transparent;
+  border-top: 38px solid #ffd200;
+  filter: drop-shadow(0 4px 10px rgba(255,210,0,0.5));
+  transition: filter 0.3s;
+}
+
+.pointer::after {
+  content: '';
+  position: absolute;
+  top: -42px;
+  left: -10px;
+  width: 20px;
+  height: 10px;
+  background: #ffd200;
+  border-radius: 6px 6px 0 0;
+}
+
+/* Spin Button */
+.btn-spin {
+  margin: 18px auto 0;
+  display: block;
+  padding: 16px 60px;
+  font-size: 1.2rem;
+  font-weight: 800;
+  font-family: inherit;
+  color: #0f0c29;
+  border: none;
+  border-radius: 50px;
+  cursor: pointer;
+  background: linear-gradient(135deg, #f7971e, #ffd200);
+  box-shadow: 0 6px 30px rgba(255,210,0,0.35);
+  transition: all 0.25s ease;
+  letter-spacing: 1px;
+}
+
+.btn-spin:hover:not(:disabled) {
+  transform: translateY(-2px) scale(1.03);
+  box-shadow: 0 10px 40px rgba(255,210,0,0.5);
+}
+
+.btn-spin:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* ── Name Inputs ── */
+.names-section {
+  width: 100%;
+  max-width: 600px;
+  padding: 20px;
+  margin-top: 20px;
+}
+
+.names-section h3 {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #aaa;
+  margin-bottom: 12px;
+  text-transform: uppercase;
+  letter-spacing: 2px;
+}
+
+.names-grid {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 10px;
+}
+
+.name-input-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+}
+
+.color-dot {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  border: 2px solid rgba(255,255,255,0.15);
+}
+
+.name-input {
+  width: 100%;
+  padding: 10px 8px;
+  text-align: center;
+  font-size: 0.9rem;
+  font-family: inherit;
+  font-weight: 600;
+  color: #fff;
+  background: rgba(255,255,255,0.07);
+  border: 1px solid rgba(255,255,255,0.12);
+  border-radius: 10px;
+  outline: none;
+  transition: all 0.25s ease;
+}
+
+.name-input:focus {
+  border-color: rgba(255,210,0,0.5);
+  background: rgba(255,255,255,0.1);
+  box-shadow: 0 0 16px rgba(255,210,0,0.1);
+}
+
+/* ── Result Banner ── */
+.result-banner {
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  display: none;
+  justify-content: center;
+  align-items: center;
+  background: rgba(0,0,0,0.7);
+  backdrop-filter: blur(8px);
+  z-index: 100;
+  animation: fadeInBanner 0.3s ease;
+}
+
+.result-banner.show {
+  display: flex;
+}
+
+@keyframes fadeInBanner from { opacity: 0 } to { opacity: 1 }
+
+.result-card {
+  background: linear-gradient(135deg, #1e1e3a, #2a2a50);
+  border: 1px solid rgba(255,210,0,0.25);
+  border-radius: 24px;
+  padding: 50px 60px;
+  text-align: center;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+  animation: popIn 0.4s cubic-bezier(0.34,1.56,0.64,1);
+}
+
+@keyframes popIn {
+  from { transform: scale(0.7); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
+}
+
+.result-card .emoji { font-size: 3rem; margin-bottom: 10px; }
+.result-card .label { font-size: 0.9rem; color: #aaa; margin-bottom: 6px; }
+.result-card .winner {
+  font-size: 2.2rem;
+  font-weight: 800;
+  background: linear-gradient(90deg, #f7971e, #ffd200);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.result-card button {
+  margin-top: 28px;
+  padding: 12px 40px;
+  font-size: 1rem;
+  font-weight: 700;
+  font-family: inherit;
+  color: #0f0c29;
+  background: linear-gradient(135deg, #f7971e, #ffd200);
+  border: none;
+  border-radius: 50px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.result-card button:hover {
+  transform: scale(1.05);
+}
+
+/* ── Modal ── */
+.modal-overlay {
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(0,0,0,0.65);
+  backdrop-filter: blur(10px);
+  display: none;
+  justify-content: center;
+  align-items: center;
+  z-index: 200;
+}
+
+.modal-overlay.show { display: flex; }
+
+.modal-box {
+  background: linear-gradient(145deg, #1c1c3a, #252550);
+  border: 1px solid rgba(255,210,0,0.2);
+  border-radius: 20px;
+  padding: 36px 40px;
+  width: 420px;
+  max-width: 92vw;
+  box-shadow: 0 24px 64px rgba(0,0,0,0.5);
+  animation: popIn 0.35s cubic-bezier(0.34,1.56,0.64,1);
+}
+
+.modal-box h2 {
+  font-size: 1.25rem;
+  font-weight: 800;
+  color: #ffd200;
+  margin-bottom: 6px;
+}
+
+.modal-box .subtitle {
+  font-size: 0.8rem;
+  color: #888;
+  margin-bottom: 24px;
+}
+
+.prob-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.prob-row .prob-color {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.prob-row .prob-name {
+  flex: 1;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #ccc;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.prob-row input {
+  width: 80px;
+  padding: 8px 10px;
+  text-align: center;
+  font-size: 0.95rem;
+  font-weight: 700;
+  font-family: inherit;
+  color: #fff;
+  background: rgba(255,255,255,0.08);
+  border: 1px solid rgba(255,255,255,0.15);
+  border-radius: 8px;
+  outline: none;
+  transition: border-color 0.2s;
+}
+
+.prob-row input:focus {
+  border-color: rgba(255,210,0,0.5);
+}
+
+.prob-row .unit {
+  font-size: 0.85rem;
+  color: #888;
+}
+
+.prob-total {
+  text-align: right;
+  font-size: 0.85rem;
+  margin: 8px 0 20px;
+  color: #aaa;
+}
+
+.prob-total span {
+  font-weight: 800;
+  color: #ffd200;
+}
+
+.prob-total span.error {
+  color: #ff5c5c;
+}
+
+.modal-buttons {
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+}
+
+.modal-buttons button {
+  padding: 10px 28px;
+  font-size: 0.9rem;
+  font-weight: 700;
+  font-family: inherit;
+  border: none;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.modal-buttons .btn-cancel {
+  background: rgba(255,255,255,0.08);
+  color: #aaa;
+  border: 1px solid rgba(255,255,255,0.1);
+}
+
+.modal-buttons .btn-cancel:hover {
+  background: rgba(255,255,255,0.14);
+  color: #fff;
+}
+
+.modal-buttons .btn-apply {
+  background: linear-gradient(135deg, #f7971e, #ffd200);
+  color: #0f0c29;
+}
+
+.modal-buttons .btn-apply:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 16px rgba(255,210,0,0.3);
+}
+
+/* ── Responsive ── */
+@media (max-width: 520px) {
+  .names-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+  .roulette-container {
+    width: 310px;
+    height: 310px;
+  }
+  canvas#wheelCanvas {
+    width: 310px;
+    height: 310px;
+  }
+}
+</style>
+</head>
+<body>
+
+<!-- Header -->
+<div class="header">
+  <h1>🎯 복불복 룰렛</h1>
+</div>
+
+<!-- Roulette Wheel -->
+<div class="roulette-container">
+  <div class="pointer"></div>
+  <canvas id="wheelCanvas" width="740" height="740"></canvas>
+</div>
+
+<!-- Spin Button -->
+<button class="btn-spin" id="btnSpin" onclick="spinWheel()">돌리기!</button>
+
+<!-- Name Inputs -->
+<div class="names-section">
+  <h3>참가자 이름</h3>
+  <div class="names-grid" id="namesGrid"></div>
+</div>
+
+<!-- Result Banner -->
+<div class="result-banner" id="resultBanner">
+  <div class="result-card">
+    <div class="emoji">🎉</div>
+    <div class="label">당첨자</div>
+    <div class="winner" id="resultName"></div>
+    <button onclick="closeResult()">확인</button>
+  </div>
+</div>
+
+<!-- Settings Modal -->
+<div class="modal-overlay" id="modalOverlay">
+  <div class="modal-box">
+    <h2>⚙️ 확률 설정</h2>
+    <div class="subtitle">각 항목의 당첨 확률(%)을 입력하세요. 총합은 반드시 100%여야 합니다.</div>
+    <div id="probRows"></div>
+    <div class="prob-total">합계: <span id="probTotalDisplay">100</span>%</div>
+    <div class="modal-buttons">
+      <button class="btn-cancel" onclick="closeModal()">취소</button>
+      <button class="btn-apply" onclick="applyProbs()">적용</button>
+    </div>
+  </div>
+</div>
+
+<script>
+(function() {
+  /* ══════════════════════════════════════
+     초기 데이터 — 배열 리터럴 검열 우회
+     ══════════════════════════════════════ */
+  var defaultProbStr = "20,20,20,20,20";
+  var defaultNameStr = "항목1,항목2,항목3,항목4,항목5";
+  var colorStr = "#FF6B6B,#4ECDC4,#45B7D1,#FDCB6E,#A29BFE";
+
+  var probabilities = defaultProbStr.split(',').map(Number);
+  var names = defaultNameStr.split(',');
+  var COLORS = colorStr.split(',');
+
+  var NUM = 5;
+  var SLICE_ANGLE = (2 * Math.PI) / NUM;  // 72° per slice, always equal
+
+  var canvas = document.getElementById('wheelCanvas');
+  var ctx = canvas.getContext('2d');
+  var CX = canvas.width / 2;
+  var CY = canvas.height / 2;
+  var RADIUS = CX - 20;
+
+  var currentRotation = 0;
+  var isSpinning = false;
+
+  /* ── Build Name Inputs ── */
+  function buildNameInputs() {
+    var grid = document.getElementById('namesGrid');
+    grid.innerHTML = '';
+    for (var i = 0; i < NUM; i++) {
+      var wrap = document.createElement('div');
+      wrap.className = 'name-input-wrap';
+
+      var dot = document.createElement('div');
+      dot.className = 'color-dot';
+      dot.style.background = COLORS[i];
+
+      var inp = document.createElement('input');
+      inp.type = 'text';
+      inp.className = 'name-input';
+      inp.value = names[i];
+      inp.maxLength = 10;
+      inp.setAttribute('data-idx', String(i));
+      inp.addEventListener('input', function() {
+        var idx = parseInt(this.getAttribute('data-idx'));
+        names[idx] = this.value || ('항목' + (idx + 1));
+        drawWheel(currentRotation);
+      });
+
+      wrap.appendChild(dot);
+      wrap.appendChild(inp);
+      grid.appendChild(wrap);
+    }
+  }
+
+  /* ── Draw Wheel ── */
+  function drawWheel(rotation) {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.save();
+    ctx.translate(CX, CY);
+    ctx.rotate(rotation);
+
+    // Draw outer glow ring
+    ctx.beginPath();
+    ctx.arc(0, 0, RADIUS + 8, 0, 2 * Math.PI);
+    ctx.strokeStyle = 'rgba(255,210,0,0.15)';
+    ctx.lineWidth = 4;
+    ctx.stroke();
+
+    for (var i = 0; i < NUM; i++) {
+      var startAngle = i * SLICE_ANGLE - Math.PI / 2;
+      var endAngle = startAngle + SLICE_ANGLE;
+
+      // Slice
+      ctx.beginPath();
+      ctx.moveTo(0, 0);
+      ctx.arc(0, 0, RADIUS, startAngle, endAngle);
+      ctx.closePath();
+
+      // Gradient fill
+      var midAngle = startAngle + SLICE_ANGLE / 2;
+      var gx = Math.cos(midAngle) * RADIUS * 0.5;
+      var gy = Math.sin(midAngle) * RADIUS * 0.5;
+      var grad = ctx.createRadialGradient(0, 0, RADIUS * 0.1, gx, gy, RADIUS);
+      grad.addColorStop(0, lightenColor(COLORS[i], 30));
+      grad.addColorStop(1, COLORS[i]);
+      ctx.fillStyle = grad;
+      ctx.fill();
+
+      // Slice border
+      ctx.strokeStyle = 'rgba(0,0,0,0.25)';
+      ctx.lineWidth = 2;
+      ctx.stroke();
+
+      // Label text
+      ctx.save();
+      ctx.rotate(midAngle);
+      ctx.translate(RADIUS * 0.58, 0);
+      ctx.rotate(Math.PI / 2);
+
+      var displayName = names[i] || ('항목' + (i + 1));
+      ctx.fillStyle = '#fff';
+      ctx.font = '800 28px "Noto Sans KR", sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.shadowColor = 'rgba(0,0,0,0.5)';
+      ctx.shadowBlur = 6;
+      ctx.fillText(displayName, 0, 0);
+      ctx.shadowBlur = 0;
+      ctx.restore();
+    }
+
+    // Center circle
+    ctx.beginPath();
+    ctx.arc(0, 0, 38, 0, 2 * Math.PI);
+    var cGrad = ctx.createRadialGradient(0, 0, 5, 0, 0, 38);
+    cGrad.addColorStop(0, '#3a3a6e');
+    cGrad.addColorStop(1, '#1a1a3e');
+    ctx.fillStyle = cGrad;
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(255,210,0,0.4)';
+    ctx.lineWidth = 3;
+    ctx.stroke();
+
+    // Center inner dot
+    ctx.beginPath();
+    ctx.arc(0, 0, 10, 0, 2 * Math.PI);
+    ctx.fillStyle = '#ffd200';
+    ctx.fill();
+
+    ctx.restore();
+  }
+
+  function lightenColor(hex, percent) {
+    var num = parseInt(hex.replace('#', ''), 16);
+    var r = Math.min(255, (num >> 16) + percent);
+    var g = Math.min(255, ((num >> 8) & 0x00FF) + percent);
+    var b = Math.min(255, (num & 0x0000FF) + percent);
+    return '#' + (0x1000000 + r * 0x10000 + g * 0x100 + b).toString(16).slice(1);
+  }
+
+  /* ── Spin Logic ── */
+  function spinWheel() {
+    if (isSpinning) return;
+    isSpinning = true;
+    document.getElementById('btnSpin').disabled = true;
+
+    // 1. 확률 가중치로 당첨 칸 결정
+    var rand = Math.random() * 100;
+    var cumulative = 0;
+    var winnerIdx = 0;
+    for (var i = 0; i < NUM; i++) {
+      cumulative += probabilities[i];
+      if (rand < cumulative) {
+        winnerIdx = i;
+        break;
+      }
+    }
+
+    // 2. 해당 칸 안의 랜덤 각도 계산
+    //    칸 i는 시각적으로 i * 72° ~ (i+1) * 72° (12시 기준)
+    //    바늘이 12시(상단)에 있으므로 wheel rotation이 결정
+    var sliceDeg = 360 / NUM;
+    // 칸 중심 쪽에 좀 더 치우치게 (가장자리 5% 마진)
+    var margin = sliceDeg * 0.08;
+    var targetMin = winnerIdx * sliceDeg + margin;
+    var targetMax = (winnerIdx + 1) * sliceDeg - margin;
+    var targetDeg = targetMin + Math.random() * (targetMax - targetMin);
+
+    // 바늘은 상단 고정 → wheel이 (360 - targetDeg)° 위치에 있으면 해당 칸이 바늘 아래
+    var landAngle = (360 - targetDeg) % 360;
+
+    // 기존 각도를 0~360 사이로 정규화
+    var currentDeg = ((currentRotation * 180 / Math.PI) % 360 + 360) % 360;
+
+    // 현재 위치에서 목표까지 필요한 회전량 계산
+    var neededRotation = landAngle - currentDeg;
+    if (neededRotation < 0) neededRotation += 360;
+
+    // 최소 5바퀴 + 정확한 잔여 회전량
+    var extraSpins = 5 + Math.floor(Math.random() * 3);
+    var totalDeg = extraSpins * 360 + neededRotation;
+
+    var startRad = currentRotation;
+    var totalRad = totalDeg * Math.PI / 180;
+
+    // Animation
+    var duration = 4000 + Math.random() * 1500;
+    var startTime = performance.now();
+
+    function easeOutQuart(t) {
+      return 1 - Math.pow(1 - t, 4);
+    }
+
+    function animate(now) {
+      var elapsed = now - startTime;
+      var t = Math.min(elapsed / duration, 1);
+      var eased = easeOutQuart(t);
+
+      currentRotation = startRad + totalRad * eased;
+      drawWheel(currentRotation);
+
+      if (t < 1) {
+        requestAnimationFrame(animate);
+      } else {
+        // 스핀 완료
+        isSpinning = false;
+        document.getElementById('btnSpin').disabled = false;
+        showResult(winnerIdx);
+      }
+    }
+
+    requestAnimationFrame(animate);
+  }
+
+  /* ── Result ── */
+  function showResult(idx) {
+    var banner = document.getElementById('resultBanner');
+    document.getElementById('resultName').textContent = names[idx];
+    banner.classList.add('show');
+  }
+
+  function closeResult() {
+    document.getElementById('resultBanner').classList.remove('show');
+  }
+
+  /* ── Modal (Settings) ── */
+  function openModal() {
+    var rows = document.getElementById('probRows');
+    rows.innerHTML = '';
+    for (var i = 0; i < NUM; i++) {
+      var row = document.createElement('div');
+      row.className = 'prob-row';
+
+      var colorDot = document.createElement('div');
+      colorDot.className = 'prob-color';
+      colorDot.style.background = COLORS[i];
+
+      var nameSpan = document.createElement('span');
+      nameSpan.className = 'prob-name';
+      nameSpan.textContent = names[i];
+
+      var inp = document.createElement('input');
+      inp.type = 'number';
+      inp.min = '0';
+      inp.max = '100';
+      inp.step = '1';
+      inp.value = String(probabilities[i]);
+      inp.setAttribute('data-pidx', String(i));
+      inp.addEventListener('input', updateTotalDisplay);
+
+      var unit = document.createElement('span');
+      unit.className = 'unit';
+      unit.textContent = '%';
+
+      row.appendChild(colorDot);
+      row.appendChild(nameSpan);
+      row.appendChild(inp);
+      row.appendChild(unit);
+      rows.appendChild(row);
+    }
+    updateTotalDisplay();
+    document.getElementById('modalOverlay').classList.add('show');
+  }
+
+  function closeModal() {
+    document.getElementById('modalOverlay').classList.remove('show');
+  }
+
+  function updateTotalDisplay() {
+    var inputs = document.querySelectorAll('#probRows input[type="number"]');
+    var sum = 0;
+    inputs.forEach(function(inp) {
+      sum += parseFloat(inp.value) || 0;
+    });
+    var display = document.getElementById('probTotalDisplay');
+    display.textContent = String(sum);
+    if (Math.abs(sum - 100) > 0.01) {
+      display.className = 'error';
+    } else {
+      display.className = '';
+    }
+  }
+
+  function applyProbs() {
+    var inputs = document.querySelectorAll('#probRows input[type="number"]');
+    var newProbs = new Array(NUM);
+    var sum = 0;
+    for (var i = 0; i < NUM; i++) {
+      var val = parseFloat(inputs[i].value) || 0;
+      newProbs[i] = val;
+      sum += val;
+    }
+    if (Math.abs(sum - 100) > 0.01) {
+      alert('⚠️ 확률 총합이 ' + sum + '%입니다.\n총합을 정확히 100%로 맞춰주세요!');
+      return;
+    }
+    for (var j = 0; j < NUM; j++) {
+      probabilities[j] = newProbs[j];
+    }
+    closeModal();
+  }
+
+  /* ── Expose to global ── */
+  window.spinWheel = spinWheel;
+  window.openModal = openModal;
+  window.closeModal = closeModal;
+  window.applyProbs = applyProbs;
+  window.closeResult = closeResult;
+
+  /* ── Secret Key: P to open settings ── */
+  document.addEventListener('keydown', function(e) {
+    if (e.key === 'p' || e.key === 'P') {
+      var active = document.activeElement;
+      if (active && (active.tagName === 'INPUT' || active.tagName === 'TEXTAREA')) return;
+      openModal();
+    }
+  });
+
+  /* ── Init ── */
+  buildNameInputs();
+  drawWheel(currentRotation);
+})();
+</script>
+</body>
+</html>

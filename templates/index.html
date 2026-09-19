@@ -1,0 +1,931 @@
+<!DOCTYPE html>
+<html lang="ko" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Plant!p — AI 식물 위키백과</title>
+    <!-- PWA: Web App Manifest & Meta -->
+    <link rel="manifest" href="/static/manifest.json">
+    <meta name="theme-color" content="#065f46">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Plant!p">
+    <link rel="apple-touch-icon" href="/static/icons/icon-192.png">
+    <link rel="icon" type="image/png" sizes="192x192" href="/static/icons/icon-192.png">
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        brand: {
+                            50: '#f0fdf4', 100: '#dcfce7', 200: '#bbf7d0',
+                            500: '#22c55e', 600: '#16a34a', 700: '#15803d', 800: '#166534',
+                        }
+                    },
+                    fontFamily: {
+                        sans: ['Pretendard', 'GmarketSansMedium', 'Noto Sans KR', 'sans-serif']
+                    }
+                }
+            }
+        }
+    </script>
+    <script>
+        // 테마 초기화 (FOUC 방지) — 저장된 테마 또는 라이트 기본
+        (function () {
+            var t = 'light';
+            try { t = localStorage.getItem('pwiki-theme') || 'light'; } catch (e) {}
+            document.documentElement.dataset.theme = t;
+        })();
+    </script>
+    <link rel="stylesheet" href="/static/css/style.css?v=2">
+</head>
+<body>
+
+    <!-- ===================== 탑바 (항상 고정 표시) ===================== -->
+    <header id="topbar">
+        <div class="flex flex-wrap items-center justify-between gap-3 px-4 md:px-8 py-3"
+             style="background: var(--card-bg); border-bottom: 1px solid var(--card-border); backdrop-filter: blur(14px);">
+            
+            <!-- 로고 및 홈 버튼 -->
+            <button id="home-logo-btn" onclick="returnHome()" title="홈으로 돌아가기" aria-label="홈으로" class="flex items-center gap-2">
+                <span class="text-2xl brand-icon shrink-0" style="animation-duration: 3s">🌱</span>
+                <span class="text-xl font-extrabold tracking-tight shrink-0 hidden sm:inline"
+                      style="background: linear-gradient(135deg, #059669, #10b981 50%, #2dd4bf); -webkit-background-clip: text; background-clip: text; color: transparent;">Plant!p</span>
+            </button>
+            
+            <!-- 중앙 검색창 -->
+            <form id="topbar-form" class="search-shell flex-1 max-w-xl mx-auto" onsubmit="handleSearch(event)" aria-label="식물 AI 검색">
+                <input type="text" id="topbar-input" class="search-input w-full" placeholder="궁금한 식물을 검색해 보세요..."
+                       autocomplete="off" aria-label="식물 이름 검색">
+                <span class="shell-divider"></span>
+                <button type="submit" class="submit-btn shrink-0" aria-label="AI 탐색 시작">AI 탐색</button>
+            </form>
+            
+            <!-- 우상단 글로벌 액션 -->
+            <div class="flex items-center gap-1 sm:gap-2">
+                <button id="history-open-btn" class="global-btn hidden sm:block" onclick="openHistoryModal()" title="나의 식물 도감">
+                    📚 나의 도감 <span id="history-count-dot" class="ml-0.5 text-[10px] bg-emerald-500 text-white px-1.5 py-0.5 rounded-full hidden">0</span>
+                </button>
+                <button id="quiz-open-btn" class="global-btn hidden md:block" onclick="openQuizModal()" title="나에게 맞는 식물 찾기 (3초 퀴즈)" aria-label="식물 MBTI 퀴즈 열기">
+                    🌱 내게 맞는 식물
+                </button>
+                <button id="login-btn" class="btn-outline text-xs sm:text-sm" onclick="openAuth()" title="로그인 (수퍼베이스 클라우드)" aria-label="로그인">로그인</button>
+                <div id="auth-user-chip" class="auth-user-chip hidden" onclick="openProfileModal()" title="나의 프로필 & 연속학습 (클릭하여 열기)" aria-label="나의 프로필 및 연속학습">
+                    <span id="auth-user-avatar">🌱</span>
+                    <span id="auth-user-name" class="hidden sm:inline">식집사</span>
+                    <span class="chip-badge leaf hidden sm:inline-flex" title="보유 리프">🍃 <span id="auth-user-leaves">50</span></span>
+                    <span class="chip-badge streak" title="연속 학습 스트릭"><span class="streak-flame-pulse">🔥</span> <span id="auth-user-streak">1일</span></span>
+                </div>
+                <button id="auth-logout-btn" class="btn-outline text-xs hidden" onclick="logoutAuth()" title="로그아웃" aria-label="로그아웃">로그아웃</button>
+                <button id="theme-toggle" class="global-btn" onclick="toggleTheme()" title="다크/화이트 모드 전환" aria-label="테마 전환">🌙</button>
+                <button id="settings-open-btn" class="global-btn hidden sm:block" onclick="openSettings()" title="설정 및 환경설정" aria-label="설정 열기">⚙️</button>
+            </div>
+        </div>
+    </header>
+
+    <!-- ===================== 초기 히어로 (중앙 AI 포털) ===================== -->
+    <section id="hero">
+        <!-- 브랜딩 (거대한 Plant!p 로고) -->
+        <div class="flex flex-col items-center mb-2 select-none pt-4">
+            <div class="flex items-center justify-center gap-4 md:gap-6 mb-2 hover:scale-105 transition-transform duration-300">
+                <span class="text-7xl md:text-[6rem] lg:text-[8rem] drop-shadow-md filter">🌱</span>
+                <h1 id="hero-greeting" class="text-7xl md:text-[6rem] lg:text-[8rem] font-extrabold tracking-tight"
+                    style="background: linear-gradient(135deg, #059669, #10b981 45%, #2dd4bf); -webkit-background-clip: text; background-clip: text; color: transparent;">
+                    Plant!p
+                </h1>
+            </div>
+            <p class="mt-2 text-sm md:text-base font-bold tracking-wide" style="color: var(--muted)">
+                AI가 작성해 주는 나만의 식물 위키백과
+            </p>
+        </div>
+
+        <!-- 중앙 검색창 -->
+        <form id="search-form" onsubmit="handleSearch(event)" class="relative w-full max-w-2xl mt-4 sm:mt-6 transition-all duration-300 transform">
+            <div class="relative flex items-center shadow-lg hover:shadow-xl transition-shadow duration-300 rounded-2xl" style="background: var(--card-bg); border: 2px solid var(--card-border);">
+                <span class="absolute left-5 text-xl sm:text-2xl pointer-events-none" style="color: var(--muted)">🔍</span>
+                <input type="text" id="plant-input" class="search-input w-full pl-14 pr-32"
+                       placeholder="어떤 식물이 궁금하신가요? (예: 몬스테라)" autocomplete="off" aria-label="식물 이름 검색">
+                <div class="absolute right-2 flex items-center gap-1.5">
+                    <button type="button" class="clear-btn text-lg p-2" onclick="clearInput()" title="지우기" aria-label="검색어 지우기">✕</button>
+                    <button type="submit" class="submit-btn px-4 py-2.5 sm:px-5 sm:py-3 rounded-xl font-bold text-white shadow-sm transition-all duration-200"
+                            style="background: linear-gradient(135deg, #10b981, #059669);" aria-label="검색 시작">
+                        <span class="hidden sm:inline">검색</span>
+                        <span class="sm:hidden">✨</span>
+                    </button>
+                </div>
+            </div>
+        </form>
+
+        <!-- 플로팅 식물 상식 카드 (Trivia) -->
+        <div id="trivia" class="mt-9 flex flex-col items-center w-full">
+            <p class="mb-3 text-[11px] font-bold tracking-wide" style="color: var(--muted)">✨ 오늘의 식물 상식 — 카드를 눌러 AI에게 물어보세요</p>
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 w-full max-w-3xl">
+                <button class="trivia-card" onclick="quickSearch('로즈마리')" aria-label="로즈마리 상식 검색">
+                    <span class="tc-emoji">🌿</span>
+                    <span class="tc-body">
+                        <b>로즈마리</b>
+                        <span>통풍이 안 되면 벌레가 생겨요!</span>
+                    </span>
+                    <span class="tc-cta">판별 →</span>
+                </button>
+                <button class="trivia-card" onclick="quickSearch('몬스테라')" aria-label="몬스테라 상식 검색">
+                    <span class="tc-emoji">🪴</span>
+                    <span class="tc-body">
+                        <b>몬스테라</b>
+                        <span>갈라진 잎은 빗물을 피하려는 거예요!</span>
+                    </span>
+                    <span class="tc-cta">판별 →</span>
+                </button>
+                <button class="trivia-card" onclick="quickSearch('토마토')" aria-label="토마토 상식 검색">
+                    <span class="tc-emoji">🍅</span>
+                    <span class="tc-body">
+                        <b>토마토</b>
+                        <span>물 많이 줄수록 맛있다? 루머예요!</span>
+                    </span>
+                    <span class="tc-cta">판별 →</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- 하단 상태 + 푸터 -->
+        <div class="mt-6 flex flex-col items-center gap-2">
+            <span id="ai-status" class="px-3 py-1 rounded-full text-[10px] font-bold border"
+                  style="background: var(--card-bg); border-color: var(--card-border); color: var(--muted)">⚙️ 확인 중...</span>
+            <p class="text-[10px] font-semibold" style="color: var(--footer-tx)">제10기 다빈치융합스쿨 · AI 중심 식물 위키백과 웹 서비스</p>
+        </div>
+    </section>
+
+
+
+    <!-- ===================== 결과 스테이지 ===================== -->
+    <main id="stage" class="max-w-4xl mx-auto">
+        <!-- Loading -->
+        <div id="loading-state" class="hidden">
+            <div class="wiki-card p-10 md:p-14 text-center space-y-5">
+                <div class="flex items-center justify-center gap-4">
+                    <div class="spinner-ring"></div>
+                    <span class="text-3xl loading-leaf">🌿</span>
+                </div>
+                <h3 class="text-xl font-extrabold">Gemini AI가 식물 위키 도감을 작성하고 있어요!</h3>
+                <p style="color: var(--muted)" class="text-sm">물주기 방법 · 병충해 대처법 · 상식 정확도 판별 중입니다... 🤖✨</p>
+                <div class="mx-auto w-full max-w-xs h-1.5 rounded-full overflow-hidden" style="background: var(--tile-em-bg)">
+                    <div class="h-full w-1/3 rounded-full" style="background: linear-gradient(90deg, transparent, #10b981, transparent); animation: slideBar 1.2s ease-in-out infinite;"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Result Card -->
+        <div id="result-container" class="hidden">
+            <div id="wiki-card" class="wiki-card p-6 md:p-8 space-y-6">
+
+                <!-- 헤더 -->
+                <div class="flex flex-col md:flex-row md:items-center justify-between pb-4 border-b gap-4" style="border-color: var(--card-border)">
+                    <div class="flex items-center space-x-4">
+                        <span id="card-emoji" class="text-5xl md:text-6xl p-3 rounded-2xl" style="background: var(--tile-em-bg)">🌱</span>
+                        <div>
+                            <div class="flex items-center flex-wrap gap-2">
+                                <h3 id="card-name" class="text-2xl md:text-3xl font-extrabold">식물 이름</h3>
+                                <span id="card-source-badge" class="px-2.5 py-0.5 rounded-full text-xs font-bold"
+                                      style="background: var(--tile-purple-bg); color: var(--tile-purple-tx)">🤖 Gemini AI 실시간 생성</span>
+                            </div>
+                            <p id="card-scientific" class="text-sm italic mt-0.5" style="color: var(--muted)">Scientific Name</p>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <button onclick="refreshSearch()" title="AI로 다시 새로고침 생성" class="global-btn text-xs">🔄 AI 다시 생성</button>
+                    </div>
+                </div>
+
+                <!-- 한 줄 소개 -->
+                <div class="tile tile-em">
+                    <span class="font-bold text-sm">📝 식물 한 줄 소개:</span>
+                    <p id="card-summary" class="mt-1 text-sm md:text-base">식물 소개가 여기에 표시됩니다.</p>
+                </div>
+
+                <!-- 🧠 AI 상식 정확도 판별 찬/반 띠 그래프 -->
+                <div id="belief-section" class="belief-box hidden rounded-2xl p-4 md:p-5 space-y-3 shadow-sm">
+                    <h4 class="font-extrabold text-sm flex items-center gap-1.5">
+                        <span>🧠 AI 상식 정확도 판별</span>
+                        <span id="belief-verdict-badge" class="px-2 py-0.5 rounded-full text-[10px] font-bold" style="background: var(--card-bg)"></span>
+                    </h4>
+                    <div class="rounded-xl px-3 py-2 text-xs opacity-90" style="background: var(--card-bg)">
+                        💭 흔히 알려진 상식: <span id="belief-myth" class="font-semibold">-</span>
+                    </div>
+                    <p id="belief-summary" class="font-bold text-sm md:text-base">AI 분석 결과: ...</p>
+                    <!-- 찬/반 띠 그래프 -->
+                    <div class="flex w-full h-9 rounded-full overflow-hidden border shadow-inner" style="border-color: var(--belief-bd)">
+                        <div id="belief-true-bar" class="bg-gradient-to-r from-emerald-400 to-emerald-600 text-white text-xs font-bold flex items-center justify-center overflow-hidden transition-all duration-700" style="width:50%">
+                            <span id="belief-true-label">맞다! 50%</span>
+                        </div>
+                        <div id="belief-false-bar" class="bg-gradient-to-r from-rose-500 to-orange-500 text-white text-xs font-bold flex items-center justify-center overflow-hidden transition-all duration-700" style="width:50%">
+                            <span id="belief-false-label">아니다! 50%</span>
+                        </div>
+                    </div>
+                    <div class="flex flex-wrap gap-x-4 gap-y-1 text-[10px] font-semibold">
+                        <span>🟢 <span id="belief-true-percent-text">0</span>% 맞다</span>
+                        <span>🔴 <span id="belief-false-percent-text">0</span>% 아니다</span>
+                    </div>
+                </div>
+
+                <!-- 4 Grid Features -->
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div class="tile tile-blue flex items-start space-x-3">
+                        <span class="text-2xl p-2 rounded-xl" style="background: var(--card-bg)">💧</span>
+                        <div class="flex-1 min-w-0">
+                            <div class="flex items-center justify-between">
+                                <h4 class="font-bold text-sm">물주기 방법</h4>
+                                <span id="card-watering-badge" class="hidden px-2 py-0.5 rounded-full text-[10px] font-bold"
+                                      style="background: var(--tile-blue-bg); color: var(--tile-blue-tx)">
+                                    💧 약 7일 간격
+                                </span>
+                            </div>
+                            <p id="card-watering" class="text-xs sm:text-sm mt-1 font-medium">-</p>
+                        </div>
+                    </div>
+                    <div class="tile tile-amber flex items-start space-x-3">
+                        <span class="text-2xl p-2 rounded-xl" style="background: var(--card-bg)">☀️</span>
+                        <div>
+                            <h4 class="font-bold text-sm">햇빛 조건</h4>
+                            <p id="card-sunlight" class="text-xs sm:text-sm mt-1 font-medium">-</p>
+                        </div>
+                    </div>
+                    <div class="tile tile-rose flex items-start space-x-3">
+                        <span class="text-2xl p-2 rounded-xl" style="background: var(--card-bg)">🌡️</span>
+                        <div>
+                            <h4 class="font-bold text-sm">적정 온도</h4>
+                            <p id="card-temperature" class="text-xs sm:text-sm mt-1 font-medium">-</p>
+                        </div>
+                    </div>
+                    <div class="tile tile-em flex items-start space-x-3">
+                        <span class="text-2xl p-2 rounded-xl" style="background: var(--card-bg)">🏷️</span>
+                        <div>
+                            <h4 class="font-bold text-sm">키우기 난이도</h4>
+                            <p id="card-difficulty" class="text-xs sm:text-sm mt-1 font-semibold">-</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 꿀팁 & 비밀 -->
+                <div class="grid grid-cols-1 gap-4">
+                    <div class="tile tile-yellow space-y-1">
+                        <h4 class="font-extrabold text-sm">💡 어린이 탐구 꿀팁</h4>
+                        <p id="card-kids-tip" class="text-xs sm:text-sm font-medium leading-relaxed">-</p>
+                    </div>
+                    <div class="tile tile-purple space-y-1">
+                        <h4 class="font-extrabold text-sm">🤫 식물의 신기한 비밀</h4>
+                        <p id="card-fun-fact" class="text-xs sm:text-sm font-medium leading-relaxed">-</p>
+                    </div>
+                </div>
+
+                <!-- 🛒 Plant!p 추천 우수 종자 구매처 -->
+                <div class="tile tile-em space-y-2.5">
+                    <h4 class="font-extrabold text-sm flex items-center gap-1.5">🛒 Plant!p 추천 우수 종자 구매처</h4>
+                    <a id="card-purchase-link"
+                       class="purchase-btn flex items-center justify-center gap-2 w-full rounded-2xl px-5 py-4 font-extrabold text-sm sm:text-base bg-gradient-to-r from-emerald-500 to-teal-600 text-white shadow-md hover:scale-105 hover:shadow-xl active:scale-100 transition-all duration-300"
+                       href="https://asiaseedmall.com" target="_blank" rel="noopener noreferrer">
+                        <span id="card-purchase-text">🌱 우수 씨앗 정식 구매처 바로가기 ➡️</span>
+                    </a>
+                </div>
+
+                <!-- 병충해 -->
+                <div id="pest-section" class="hidden space-y-3 pt-1">
+                    <h4 class="font-extrabold text-rose-500 text-sm">🐛 주의해야 할 병충해 &amp; 대처법</h4>
+                    <div id="pest-list" class="grid grid-cols-1 sm:grid-cols-2 gap-3"></div>
+                </div>
+
+                <div class="flex flex-col gap-2 pt-2">
+                    <button id="btn-save-to-collection" onclick="saveToCollection()"
+                        class="w-full py-3 rounded-xl font-bold flex items-center justify-center gap-2 transition-all duration-200"
+                        style="background: linear-gradient(135deg, #059669, #10b981); color: white;"
+                        onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 8px 20px rgba(16,185,129,0.35)'"
+                        onmouseout="this.style.transform=''; this.style.boxShadow=''">
+                        <span>📚</span> 나의 도감에 저장하기
+                    </button>
+                    <button id="btn-register-watering" onclick="registerWateringFromResult()"
+                        class="w-full py-3 rounded-xl font-bold flex items-center justify-center gap-2 transition-all duration-200"
+                        style="background: linear-gradient(135deg, #0284c7, #38bdf8); color: white;"
+                        onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 8px 20px rgba(56,189,248,0.35)'"
+                        onmouseout="this.style.transform=''; this.style.boxShadow=''">
+                        <span>💧</span> 물주기 알림 등록하기
+                    </button>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- ===================== 대시보드 뷰 (하단바 탭으로 진입) ===================== -->
+    <main id="dashboard-view" class="max-w-4xl mx-auto" role="main" aria-label="나의 대시보드">
+        <div class="dashboard-header">
+            <h2 class="dashboard-title">📊 나의 대시보드</h2>
+            <div class="dashboard-user">
+                <span id="dashboard-user-email" class="hidden"></span>
+                <button id="dashboard-login-btn" class="btn-outline text-xs hidden" onclick="openAuth()">로그인</button>
+            </div>
+        </div>
+
+        <!-- 스마트 물주기 섹션 -->
+        <section id="watering-section" class="dashboard-section" aria-labelledby="watering-section-title">
+            <h3 id="watering-section-title" class="dashboard-section-title">💧 스마트 물주기</h3>
+            
+            <!-- 인증 게이트 (미로그인 시 표시) -->
+            <div id="watering-auth-gate" class="auth-gate-overlay">
+                <div class="auth-gate-content">
+                    <span class="auth-gate-icon">🔒</span>
+                    <h4 class="auth-gate-title">로그인이 필요한 기능입니다</h4>
+                    <p class="auth-gate-desc">등록한 식물의 물주기 D-Day 현황을 확인하고<br>물주기 기록을 관리하려면 로그인이 필요해요.</p>
+                    <button class="auth-gate-btn" onclick="openAuth()">🔐 로그인하러 가기</button>
+                </div>
+            </div>
+
+            <!-- 물주기 카드 리스트 (로그인 시 표시) -->
+            <div id="watering-cards-container" class="hidden">
+                <div id="watering-cards-list"></div>
+                <div id="watering-empty" class="dashboard-empty hidden">
+                    <span class="dashboard-empty-emoji">🌱</span>
+                    <p class="dashboard-empty-title">등록된 식물이 없어요</p>
+                    <p class="dashboard-empty-desc">식물 검색 후 도감에 저장하면<br>자동으로 물주기 일정이 생성돼요.</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- 이메일 알림 설정 섹션 -->
+        <section id="notification-section" class="dashboard-section" aria-labelledby="notification-section-title">
+            <h3 id="notification-section-title" class="dashboard-section-title">📬 이메일 알림 설정</h3>
+            
+            <!-- 인증 게이트 (미로그인 시 표시) -->
+            <div id="notification-auth-gate" class="auth-gate-overlay">
+                <div class="auth-gate-content">
+                    <span class="auth-gate-icon">🔒</span>
+                    <h4 class="auth-gate-title">로그인이 필요한 기능입니다</h4>
+                    <p class="auth-gate-desc">물주기 알림 이메일을 받고 설정을 관리하려면<br>로그인이 필요해요.</p>
+                    <button class="auth-gate-btn" onclick="openAuth()">🔐 로그인하러 가기</button>
+                </div>
+            </div>
+
+            <!-- 알림 설정 (로그인 시 표시) -->
+            <div id="notification-settings" class="hidden">
+                <!-- 오늘 알림 발송 상태 뱃지 -->
+                <span id="notification-status-badge" class="notification-status-badge pending">
+                    ⏳ 오늘 발송된 알림 없음 (다음 알림 대기 중)
+                </span>
+                
+                <div class="tile tile-blue">
+                    <p class="font-bold text-sm">🌅 아침 알림 (오전 9시)</p>
+                    <p class="text-xs mt-1" style="color: var(--muted)">물주기 D-Day인 식물이 있을 때 이메일로 알려드려요.</p>
+                    <label class="switch mt-3" title="아침 알림 켜기/끄기">
+                        <input type="checkbox" id="morning-notification-toggle" onchange="toggleMorningNotification(this.checked)" aria-label="아침 알림 전환">
+                        <span class="slider"></span>
+                    </label>
+                </div>
+                
+                <div class="tile tile-amber mt-3">
+                    <p class="font-bold text-sm">🔔 즉시 알림</p>
+                    <p class="text-xs mt-1" style="color: var(--muted)">물 줬어요 버튼을 누르면 즉시 확인 알림을 보내요.</p>
+                    <label class="switch mt-3" title="즉시 알림 켜기/끄기">
+                        <input type="checkbox" id="instant-notification-toggle" onchange="toggleInstantNotification(this.checked)" aria-label="즉시 알림 전환">
+                        <span class="slider"></span>
+                    </label>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- ===================== 하단 네비게이션 바 ===================== -->
+    <div id="bottom-nav-container">
+        <nav id="bottom-nav" role="navigation" aria-label="메인 네비게이션">
+            <button class="nav-item" onclick="openHistoryModal()" aria-label="도감">
+                <span class="nav-icon">📚</span>
+                <span class="nav-label">도감</span>
+            </button>
+            <button class="nav-item" onclick="openShopModal()" aria-label="상점">
+                <span class="nav-icon">🛒</span>
+                <span class="nav-label">상점</span>
+            </button>
+            
+            <div class="nav-item center-fab-container">
+                <button class="center-fab" data-view="home" onclick="switchView('home')" aria-label="홈">
+                    <span class="fab-icon">🔍</span>
+                    <span class="fab-label">홈</span>
+                </button>
+            </div>
+            
+            <button class="nav-item" data-view="dashboard" onclick="switchView('dashboard')" aria-label="대시보드">
+                <span class="nav-icon">📊</span>
+                <span class="nav-label">대시보드</span>
+            </button>
+            <button class="nav-item" data-view="settings" onclick="switchView('settings')" aria-label="설정">
+                <span class="nav-icon">⚙️</span>
+                <span class="nav-label">설정</span>
+            </button>
+        </nav>
+    </div>
+
+    <!-- ===================== 나의 식물 도감 모달 ===================== -->
+    <div id="history-modal" onclick="closeHistoryModalOnBackdrop(event)">
+        <div class="modal-panel">
+            <div class="flex items-center justify-between">
+                <h3 class="font-extrabold text-lg flex items-center gap-2">
+                    📚 나의 식물 도감 <span id="history-badge" class="text-[10px] bg-emerald-500 text-white px-2 py-0.5 rounded-full">0</span>
+                </h3>
+                <button onclick="closeHistoryModal()" class="global-btn" aria-label="도감 닫기">✕</button>
+            </div>
+            <div id="history-timeline" class="overflow-y-auto space-y-2 pr-1" style="max-height: 56vh"></div>
+            <div id="history-empty" class="text-center py-8">
+                <span class="text-4xl">📖</span>
+                <p class="text-sm font-bold mt-2">아직 도감에 저장된 식물이 없어요.</p>
+                <p class="text-xs mt-1" style="color: var(--muted)">검색창에서 식물을 찾아보세요!</p>
+            </div>
+            <div id="history-login-hint" class="hidden text-center py-8">
+                <span class="text-4xl">🔐</span>
+                <p class="text-sm font-bold mt-2">로그인 후 나의 도감을 확인하세요!</p>
+                <p class="text-xs mt-1" style="color: var(--muted)">수퍼베이스 클라우드에 검색 기록이 저장돼요.</p>
+                <button class="guardrail-btn mt-4" onclick="openAuth()">로그인 / 회원가입</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ===================== 식물 가드레일 안내 모달 (비식물 검색어) ===================== -->
+    <div id="guardrail-modal" onclick="closeGuardrailOnBackdrop(event)" aria-label="식물 가드레일 안내">
+        <div class="guardrail-panel">
+            <span class="guardrail-emoji">🛡️</span>
+            <p class="guardrail-title">Plant!p은 식물 탐구를 위한 공간이에요! 🌱</p>
+            <p class="guardrail-desc">강아지, 자동차 같은 검색어는 식물이 아니에요.<br>식물을 검색하면 AI가 친절하게 알려드려요!</p>
+            <button class="guardrail-btn" onclick="closeGuardrailAndReturn()">메인 화면으로 돌아가기</button>
+        </div>
+    </div>
+
+    <!-- ===================== 로그인 / 회원가입 모달 (Supabase Auth) ===================== -->
+    <div id="auth-modal" onclick="closeAuthOnBackdrop(event)" aria-label="로그인 및 회원가입">
+        <div class="modal-panel auth-panel">
+            <div class="flex items-center justify-between">
+                <h3 class="font-extrabold text-lg flex items-center gap-2" id="auth-mode-title">🔐 로그인</h3>
+                <button onclick="closeAuth()" class="global-btn" aria-label="로그인 닫기">✕</button>
+            </div>
+            <div id="auth-form-wrap">
+                <!-- 구글 간편 로그인 -->
+                <button type="button" class="google-auth-btn" onclick="signInWithGoogle()" aria-label="구글 계정으로 로그인">
+                    <svg width="18" height="18" viewBox="0 0 24 24">
+                        <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+                        <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+                        <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"/>
+                        <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"/>
+                    </svg>
+                    <span>Google 계정으로 계속하기</span>
+                </button>
+                <div class="auth-divider"><span>또는 이메일로 로그인</span></div>
+
+                <div class="auth-tabs" role="tablist" aria-label="로그인 또는 회원가입">
+                    <button type="button" id="auth-tab-login" class="auth-tab active" role="tab" aria-selected="true" onclick="setAuthMode('login')">로그인</button>
+                    <button type="button" id="auth-tab-register" class="auth-tab" role="tab" aria-selected="false" onclick="setAuthMode('register')">회원가입</button>
+                </div>
+                <input type="email" id="auth-email" class="search-input" placeholder="이메일 주소" autocomplete="email" aria-label="이메일">
+                <input type="password" id="auth-password" class="search-input mt-2" placeholder="비밀번호 (6자 이상)" autocomplete="current-password" aria-label="비밀번호">
+                <p id="auth-error" class="hidden mt-2">⚠️ 오류가 발생했습니다.</p>
+                <button id="auth-submit-btn" class="submit-btn w-full mt-3" onclick="submitAuth()">로그인</button>
+            </div>
+            <div id="auth-logged-wrap" class="hidden">
+                <div class="tile tile-em">
+                    <p class="font-bold text-sm">🌿 로그인됨</p>
+                    <p id="auth-logged-email" class="text-xs mt-1 opacity-80"></p>
+                </div>
+                <button class="btn-outline w-full mt-3" onclick="logoutAuth()">로그아웃</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ===================== 나의 프로필 & 연속학습(스트릭) 모달 ===================== -->
+    <div id="profile-modal" onclick="closeProfileOnBackdrop(event)" aria-label="나의 프로필 및 연속학습">
+        <div class="modal-panel profile-panel">
+            <div class="flex items-center justify-between border-b pb-3 mb-4" style="border-color: var(--card-border)">
+                <h3 class="font-extrabold text-lg flex items-center gap-2">
+                    <span>🌱</span> 나의 프로필 & 연속학습
+                </h3>
+                <button onclick="closeProfileModal()" class="global-btn" aria-label="프로필 닫기">✕</button>
+            </div>
+
+            <!-- 아바타 & 닉네임 카드 -->
+            <div class="profile-card mb-4 p-4 rounded-2xl flex items-center gap-4" style="background: var(--tile-em-bg); border: 1px solid var(--card-border);">
+                <div class="relative">
+                    <span id="profile-avatar-display" class="text-4xl p-2.5 rounded-2xl bg-white/30 dark:bg-black/30 shadow-inner block select-none">🌱</span>
+                    <button type="button" class="avatar-edit-badge" onclick="toggleAvatarPicker()" title="아바타 변경" aria-label="아바타 변경">✏️</button>
+                </div>
+                <div class="flex-1 min-w-0">
+                    <div class="flex items-center gap-2">
+                        <input type="text" id="profile-nickname-input" class="profile-nick-input font-bold text-base" value="새싹 식집사" maxlength="20" aria-label="닉네임">
+                        <button type="button" class="save-nick-btn text-xs font-semibold px-2.5 py-1 rounded-lg" onclick="saveNickname()">저장</button>
+                    </div>
+                    <p id="profile-email-display" class="text-xs mt-1 text-slate-400 truncate"></p>
+                </div>
+            </div>
+
+            <!-- 아바타 선택 그리드 (토글) -->
+            <div id="avatar-picker-grid" class="avatar-picker hidden mb-4 p-3 rounded-2xl grid grid-cols-6 gap-2" style="background: var(--bg); border: 1px solid var(--card-border)">
+                <button type="button" class="avatar-opt" onclick="selectAvatar('🌱')">🌱</button>
+                <button type="button" class="avatar-opt" onclick="selectAvatar('🌿')">🌿</button>
+                <button type="button" class="avatar-opt" onclick="selectAvatar('🍀')">🍀</button>
+                <button type="button" class="avatar-opt" onclick="selectAvatar('🌸')">🌸</button>
+                <button type="button" class="avatar-opt" onclick="selectAvatar('🌻')">🌻</button>
+                <button type="button" class="avatar-opt" onclick="selectAvatar('🌵')">🌵</button>
+                <button type="button" class="avatar-opt" onclick="selectAvatar('🌴')">🌴</button>
+                <button type="button" class="avatar-opt" onclick="selectAvatar('🌲')">🌲</button>
+                <button type="button" class="avatar-opt" onclick="selectAvatar('🍄')">🍄</button>
+                <button type="button" class="avatar-opt" onclick="selectAvatar('🍅')">🍅</button>
+                <button type="button" class="avatar-opt" onclick="selectAvatar('🥕')">🥕</button>
+                <button type="button" class="avatar-opt" onclick="selectAvatar('💐')">💐</button>
+            </div>
+
+            <!-- 화폐 & 연속학습 요약 카드 -->
+            <div class="grid grid-cols-2 gap-3 mb-4">
+                <div class="tile tile-em p-3 text-center rounded-2xl">
+                    <p class="text-xs text-muted font-bold">보유 리프</p>
+                    <p class="text-2xl font-black text-emerald-600 dark:text-emerald-400 mt-0.5">
+                        🍃 <span id="profile-leaf-count">50</span>
+                    </p>
+                    <p class="text-[11px] text-muted mt-0.5">리프 코인</p>
+                </div>
+                <div class="tile tile-amber p-3 text-center rounded-2xl">
+                    <p class="text-xs text-muted font-bold">연속 학습</p>
+                    <p class="text-2xl font-black text-amber-500 mt-0.5">
+                        <span class="streak-flame-pulse">🔥</span> <span id="profile-streak-count">1</span>일
+                    </p>
+                    <p class="text-[11px] text-muted mt-0.5">스트릭 달성 중</p>
+                </div>
+            </div>
+
+            <!-- 상점으로 이동 -->
+            <button class="w-full mb-4 py-3 rounded-xl font-bold flex items-center justify-center gap-2 shadow-sm"
+                    style="background: linear-gradient(135deg, #059669, #10b981); color: white; transition: transform 0.2s ease, box-shadow 0.2s ease;"
+                    onclick="openShopModal()"
+                    onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 10px 15px -3px rgba(16, 185, 129, 0.4)'" 
+                    onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 1px 2px 0 rgba(0, 0, 0, 0.05)'">
+                <span class="text-xl">🛒</span> 
+                <span>상점 (꾸미기) 입장하기</span>
+            </button>
+
+            <!-- 7일 연속 출석 스탬프 챌린지 -->
+            <div class="streak-board p-4 rounded-2xl mb-4" style="background: var(--tile-em-bg); border: 1px solid var(--card-border)">
+                <div class="flex items-center justify-between mb-3">
+                    <span class="font-bold text-sm flex items-center gap-1.5">🔥 7일 연속 학습 챌린지</span>
+                    <span class="text-xs text-emerald-600 dark:text-emerald-400 font-extrabold">매일 +10 리프 🍃</span>
+                </div>
+                <div id="streak-days-row" class="flex justify-between items-center gap-1.5">
+                    <!-- JS에서 동적 렌더링 -->
+                </div>
+                <button id="streak-checkin-btn" class="w-full mt-4 submit-btn py-2.5 font-bold flex items-center justify-center gap-2" onclick="handleStreakCheckin()">
+                    <span>📅</span> 오늘 출석 체크하고 +10 리프 받기!
+                </button>
+            </div>
+
+            <!-- 최근 리프 내역 -->
+            <div class="leaf-history-section">
+                <p class="text-xs font-bold text-muted mb-2 flex items-center gap-1">
+                    <span>📜</span> 최근 리프 적립 / 사용 내역
+                </p>
+                <div id="leaf-history-list" class="space-y-1.5 max-h-36 overflow-y-auto pr-1 text-xs">
+                    <!-- JS에서 동적 렌더링 -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ===================== 상점 (꾸미기) 모달 ===================== -->
+    <div id="shop-modal" onclick="closeShopOnBackdrop(event)" aria-label="상점">
+        <div class="modal-panel shop-panel">
+            <div class="flex items-center justify-between border-b pb-3 mb-4" style="border-color: var(--card-border)">
+                <h3 class="font-extrabold text-lg flex items-center gap-2">
+                    <span>🛒</span> 꾸미기 상점
+                </h3>
+                <div class="flex items-center gap-3">
+                    <span class="font-bold text-sm bg-emerald-100 text-emerald-800 px-3 py-1 rounded-full dark:bg-emerald-900/30 dark:text-emerald-400">
+                        내 리프: 🍃 <span id="shop-my-leaves">0</span>
+                    </span>
+                    <button onclick="closeShopModal()" class="global-btn" aria-label="상점 닫기">✕</button>
+                </div>
+            </div>
+            
+            <p class="text-sm mb-4" style="color: var(--muted)">모은 리프를 사용해서 프로필 아바타를 구매해보세요! 구매한 아이템은 프로필에서 사용할 수 있습니다.</p>
+            
+            <div class="grid grid-cols-2 sm:grid-cols-3 gap-4" id="shop-items-container">
+                <!-- 아바타 아이템 1 -->
+                <div class="shop-item-card flex flex-col items-center justify-between p-4 rounded-2xl" style="background: var(--card-bg); border: 1px solid var(--card-border);">
+                    <div class="text-center mb-3">
+                        <div class="text-4xl mb-2">🌻</div>
+                        <h4 class="font-bold text-sm">해바라기 아바타</h4>
+                        <p class="text-[11px] text-muted mt-1">밝고 긍정적인 식집사</p>
+                    </div>
+                    <button class="w-full py-1.5 rounded-lg text-sm font-bold bg-emerald-100 text-emerald-700 hover:bg-emerald-200 dark:bg-emerald-900/40 dark:text-emerald-400 dark:hover:bg-emerald-800/60 transition-colors" onclick="buyItem('avatar_sunflower', 50, '🌻')">
+                        🍃 50 구매
+                    </button>
+                </div>
+                <!-- 아바타 아이템 2 -->
+                <div class="shop-item-card flex flex-col items-center justify-between p-4 rounded-2xl" style="background: var(--card-bg); border: 1px solid var(--card-border);">
+                    <div class="text-center mb-3">
+                        <div class="text-4xl mb-2">🌵</div>
+                        <h4 class="font-bold text-sm">선인장 아바타</h4>
+                        <p class="text-[11px] text-muted mt-1">강인한 생명력의 소유자</p>
+                    </div>
+                    <button class="w-full py-1.5 rounded-lg text-sm font-bold bg-emerald-100 text-emerald-700 hover:bg-emerald-200 dark:bg-emerald-900/40 dark:text-emerald-400 dark:hover:bg-emerald-800/60 transition-colors" onclick="buyItem('avatar_cactus', 100, '🌵')">
+                        🍃 100 구매
+                    </button>
+                </div>
+                <!-- 아바타 아이템 3 -->
+                <div class="shop-item-card flex flex-col items-center justify-between p-4 rounded-2xl" style="background: var(--card-bg); border: 1px solid var(--card-border);">
+                    <div class="text-center mb-3">
+                        <div class="text-4xl mb-2">🌸</div>
+                        <h4 class="font-bold text-sm">벚꽃 아바타</h4>
+                        <p class="text-[11px] text-muted mt-1">봄을 기다리는 식집사</p>
+                    </div>
+                    <button class="w-full py-1.5 rounded-lg text-sm font-bold bg-emerald-100 text-emerald-700 hover:bg-emerald-200 dark:bg-emerald-900/40 dark:text-emerald-400 dark:hover:bg-emerald-800/60 transition-colors" onclick="buyItem('avatar_cherryblossom', 150, '🌸')">
+                        🍃 150 구매
+                    </button>
+                </div>
+                <!-- 아바타 아이템 4 -->
+                <div class="shop-item-card flex flex-col items-center justify-between p-4 rounded-2xl" style="background: var(--card-bg); border: 1px solid var(--card-border);">
+                    <div class="text-center mb-3">
+                        <div class="text-4xl mb-2">🍄</div>
+                        <h4 class="font-bold text-sm">버섯 아바타</h4>
+                        <p class="text-[11px] text-muted mt-1">촉촉한 환경을 좋아하는</p>
+                    </div>
+                    <button class="w-full py-1.5 rounded-lg text-sm font-bold bg-emerald-100 text-emerald-700 hover:bg-emerald-200 dark:bg-emerald-900/40 dark:text-emerald-400 dark:hover:bg-emerald-800/60 transition-colors" onclick="buyItem('avatar_mushroom', 200, '🍄')">
+                        🍃 200 구매
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ===================== 설정 및 환경설정 모달 ===================== -->
+    <div id="settings-modal" onclick="closeSettingsOnBackdrop(event)">
+        <div class="modal-panel settings-panel">
+            <div class="settings-modal-header">
+                <h3 class="flex items-center gap-2">⚙️ 환경설정</h3>
+                <button onclick="closeSettings()" class="global-btn" aria-label="설정 닫기">✕</button>
+            </div>
+
+            <div class="settings-modal-body">
+                <!-- 좌측 사이드바: 탭 버튼 -->
+                <nav class="settings-sidebar" aria-label="설정 메뉴">
+                    <button type="button" class="settings-tab-btn active" data-tab="general" onclick="switchSettingsTab('general')">
+                        <span aria-hidden="true">⚙️</span><span>일반 설정</span>
+                    </button>
+                    <button type="button" class="settings-tab-btn" data-tab="history" onclick="switchSettingsTab('history')">
+                        <span aria-hidden="true">📜</span><span>나의 역사</span>
+                    </button>
+                </nav>
+
+                <!-- 우측 컨텐츠 영역: 탭 클릭 시 이 영역만 전환 -->
+                <div class="settings-content-area">
+                    <!-- 탭 1: 일반 설정 -->
+                    <div id="tab-general" class="settings-tab-content active">
+                        <!-- 테마 전환 (글로벌 🌙/☀️ 토글과 이중 바인딩) -->
+                        <div class="settings-row">
+                            <div>
+                                <p class="font-bold text-sm">🎨 테마 전환</p>
+                                <p class="text-xs mt-0.5" style="color: var(--muted)">라이트 모드 / 다크 모드를 선택하세요.</p>
+                            </div>
+                            <label class="switch" title="라이트/다크 테마 전환">
+                                <input type="checkbox" id="settings-theme-switch" onchange="setTheme(this.checked ? 'dark' : 'light')" aria-label="설정 내 테마 전환">
+                                <span class="slider"></span>
+                            </label>
+                        </div>
+
+                        <!-- 뉴스레터 구독 (더미) -->
+                        <div class="settings-section space-y-1 mt-2">
+                            <p class="font-bold text-sm">📬 뉴스레터 구독 <span class="text-[10px] px-2 py-0.5 rounded-full ml-1" style="background: var(--tile-amber-bg); color: var(--tile-amber-tx)">더미</span></p>
+                            <p class="text-xs" style="color: var(--muted)">추후 식물 관리 알림을 받을 이메일 주소를 입력하세요.</p>
+                            <form id="newsletter-form" class="flex gap-2 mt-3" onsubmit="subscribeNewsletter(event)" novalidate>
+                                <input type="email" id="newsletter-email" class="newsletter-input" placeholder="example@email.com" autocomplete="off" aria-label="이메일 주소">
+                                <button type="submit" class="submit-btn" aria-label="구독하기">구독하기</button>
+                            </form>
+                        </div>
+                    </div>
+
+                    <!-- 탭 2: 나의 역사 (패치노트: Plant!p의 역사) -->
+                    <div id="tab-history" class="settings-tab-content">
+                        <div class="settings-section">
+                            <p class="font-bold text-sm">
+                                📜 패치노트 — <span class="font-extrabold italic"
+                                    style="background: linear-gradient(135deg, #059669, #2dd4bf); -webkit-background-clip: text; background-clip: text; color: transparent;">Plant!p의 위대한 기록</span>
+                            </p>
+                            <div class="timeline mt-4">
+                                <div class="timeline-item">
+                                    <span class="tl-dot" style="background: #059669">🚀</span>
+                                    <div class="tl-body">
+                                        <p class="tl-version">[Alpha 1.0] <b>"한 걸음의 시작"</b> <span class="tl-tag">Original</span></p>
+                                        <p class="tl-desc">터미널 가상화 에러와 꼬인 구글 API 키 족쇄를 뚫고, 순수한 파이썬 백엔드 환경에서 최초의 식물 데이터 매칭 서버 초안을 빌드하는 데 성공한 전설의 오리지널 버전.</p>
+                                    </div>
+                                </div>
+                                <div class="timeline-item">
+                                    <span class="tl-dot" style="background: #10b981">🌿</span>
+                                    <div class="tl-body">
+                                        <p class="tl-version">[Alpha 1.1] <b>"세로형의 진화"</b> <span class="tl-tag">Transition</span></p>
+                                        <p class="tl-desc">오픈코드 에이전트와 교감하며 사용자 편의성을 높이기 위해 좌측 고정식 '그린 세로 사이드바 UI'와 SQLite 3 관계형 데이터베이스 도감 저장 시스템을 최초로 융합시킨 과도기적 빌드.</p>
+                                    </div>
+                                </div>
+                                <div class="timeline-item">
+                                    <span class="tl-dot" style="background: #2dd4bf">🌌</span>
+                                    <div class="tl-body">
+                                        <p class="tl-version">[Beta 1.0] <b>"AI 포털의 탄생"</b> <span class="tl-tag">Archived</span></p>
+                                        <p class="tl-desc">사이드바를 과감히 부수고 챗GPT 스타일의 중앙 포털 레이아웃 도입! 사용자가 식물을 검색하면 로고가 상단으로 슬라이드 업되는 영화 같은 트랜지션 모션과 웹상의 뜬소문을 수치화해 검증하는 'AI 상식 정확도 찬/반 띠 그래프' 파이프라인을 최종 완성한 완전체 마스터피스 버전.</p>
+                                    </div>
+                                </div>
+                                <div class="timeline-item">
+                                    <span class="tl-dot" style="background: #059669">☁️</span>
+                                    <div class="tl-body">
+                                        <p class="tl-version">[Beta 2.0] <b>"클라우드의 날개"</b> <span class="tl-tag">Cloud</span></p>
+                                        <p class="tl-desc">로컬 SQLite를 완전히 걷어내고 수퍼베이스(Supabase) 원격 클라우드 DB로 도감을 이전! 로그인한 유저의 검색 기록이 실시간 원격 저장되고 📚 나의 도감에서 본인 데이터만 타임라인으로 펼쳐져요. 비식물 검색어를 막아주는 🌱 식물 가드레일도 함께 탑재된 업그레이드 버전.</p>
+                                    </div>
+                                </div>
+                                <div class="timeline-item">
+                                    <span class="tl-dot current" style="background: #10b981">🍃</span>
+                                    <div class="tl-body">
+                                        <p class="tl-version">[Beta 2.1] <b>"리프와 연속학습의 새싹"</b> <span class="tl-tag current">Current</span></p>
+                                        <p class="tl-desc">Google 원클릭 간편 로그인과 유저 프로필 시스템 탑재! 출석체크로 매일 🔥 연속학습 스트릭을 쌓고 🍃 리프 화폐를 모아 나만의 식물 정원을 꾸밀 준비를 마친 하이브리드 게이미피케이션 업데이트.</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+</div>
+    </div>
+</div>
+
+<!-- ===================== 식물 MBTI 퀴즈 모달 ===================== -->
+<div id="quiz-modal" onclick="closeQuizModalOnBackdrop(event)">
+    <div class="modal-panel quiz-panel">
+        <div class="quiz-modal-header">
+            <h3 class="flex items-center gap-2">🌱 3초 식물 MBTI 퀴즈</h3>
+            <button onclick="closeQuizModal()" class="global-btn" aria-label="퀴즈 닫기">✕</button>
+        </div>
+
+        <div class="quiz-modal-body">
+            <!-- 진행 바 -->
+            <div class="quiz-progress mb-4">
+                <div class="flex justify-between text-xs mb-1">
+                    <span id="quiz-step-text" style="color: var(--muted)">1 / 3</span>
+                    <span id="quiz-percent-text" style="color: var(--muted)">33%</span>
+                </div>
+                <div class="h-1.5 rounded-full overflow-hidden" style="background: var(--tile-em-bg)">
+                    <div id="quiz-progress-bar" class="h-full rounded-full transition-all duration-300" style="width: 33%; background: linear-gradient(90deg, #10b981, #059669)"></div>
+                </div>
+            </div>
+
+            <!-- 퀴즈 컨텐츠 영역 -->
+            <div id="quiz-content" class="space-y-4">
+                <!-- 질문 1: 일조량 -->
+                <div id="quiz-q1" class="quiz-question active">
+                    <p class="font-bold text-base mb-3">☀️ <span class="text-lg">질문 1/3</span> 내 공간의 일조량은?</p>
+                    <div class="grid grid-cols-1 gap-2" role="radiogroup" aria-label="일조량 선택">
+                        <button type="button" class="quiz-option" data-value="low" onclick="selectQuizOption(1, 'low')">
+                            <span class="quiz-option-icon">🌑</span>
+                            <div>
+                                <span class="quiz-option-title font-medium">어두운 원룸</span>
+                                <span class="quiz-option-desc block text-xs mt-0.5" style="color: var(--muted)">자연광이 거의 안 들어옴</span>
+                            </div>
+                        </button>
+                        <button type="button" class="quiz-option" data-value="medium" onclick="selectQuizOption(1, 'medium')">
+                            <span class="quiz-option-icon">🌤️</span>
+                            <div>
+                                <span class="quiz-option-title font-medium">밝은 거실</span>
+                                <span class="quiz-option-desc block text-xs mt-0.5" style="color: var(--muted)">간접광이 잘 들어옴</span>
+                            </div>
+                        </button>
+                        <button type="button" class="quiz-option" data-value="high" onclick="selectQuizOption(1, 'high')">
+                            <span class="quiz-option-icon">☀️</span>
+                            <div>
+                                <span class="quiz-option-title font-medium">햇빛 쨍쨍한 베란다</span>
+                                <span class="quiz-option-desc block text-xs mt-0.5" style="color: var(--muted)">직사광 4시간 이상</span>
+                            </div>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- 질문 2: 물주기 습관 -->
+                <div id="quiz-q2" class="quiz-question">
+                    <p class="font-bold text-base mb-3">💧 <span class="text-lg">질문 2/3</span> 내 물주기 습관은?</p>
+                    <div class="grid grid-cols-1 gap-2" role="radiogroup" aria-label="물주기 습관 선택">
+                        <button type="button" class="quiz-option" data-value="daily" onclick="selectQuizOption(2, 'daily')">
+                            <span class="quiz-option-icon">🗓️</span>
+                            <div>
+                                <span class="quiz-option-title font-medium">매일 챙겨줌</span>
+                                <span class="quiz-option-desc block text-xs mt-0.5" style="color: var(--muted)">매일 아침 물 확인 필수</span>
+                            </div>
+                        </button>
+                        <button type="button" class="quiz-option" data-value="weekly" onclick="selectQuizOption(2, 'weekly')">
+                            <span class="quiz-option-icon">📅</span>
+                            <div>
+                                <span class="quiz-option-title font-medium">주 1회 적당히</span>
+                                <span class="quiz-option-desc block text-xs mt-0.5" style="color: var(--muted)">일주일에 한 번 듬뿍</span>
+                            </div>
+                        </button>
+                        <button type="button" class="quiz-option" data-value="forgetful" onclick="selectQuizOption(2, 'forgetful')">
+                            <span class="quiz-option-icon">😅</span>
+                            <div>
+                                <span class="quiz-option-title font-medium">자주 깜빡함</span>
+                                <span class="quiz-option-desc block text-xs mt-0.5" style="color: var(--muted)">물 주는 걸 잘 잊어버림</span>
+                            </div>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- 질문 3: 키우는 목적 -->
+                <div id="quiz-q3" class="quiz-question">
+                    <p class="font-bold text-base mb-3">🎯 <span class="text-lg">질문 3/3</span> 키우는 주된 목적은?</p>
+                    <div class="grid grid-cols-1 gap-2" role="radiogroup" aria-label="키우는 목적 선택">
+                        <button type="button" class="quiz-option" data-value="air" onclick="selectQuizOption(3, 'air')">
+                            <span class="quiz-option-icon">🌬️</span>
+                            <div>
+                                <span class="quiz-option-title font-medium">공기정화 및 인테리어</span>
+                                <span class="quiz-option-desc block text-xs mt-0.5" style="color: var(--muted)">실내 공기 맑게 & 예쁘게</span>
+                            </div>
+                        </button>
+                        <button type="button" class="quiz-option" data-value="harvest" onclick="selectQuizOption(3, 'harvest')">
+                            <span class="quiz-option-icon">🥗</span>
+                            <div>
+                                <span class="quiz-option-title font-medium">맛있는 채소 수확</span>
+                                <span class="quiz-option-desc block text-xs mt-0.5" style="color: var(--muted)">직접 길러 먹는 기쁨</span>
+                            </div>
+                        </button>
+                        <button type="button" class="quiz-option" data-value="flower" onclick="selectQuizOption(3, 'flower')">
+                            <span class="quiz-option-icon">🌸</span>
+                            <div>
+                                <span class="quiz-option-title font-medium">예쁜 꽃 감상</span>
+                                <span class="quiz-option-desc block text-xs mt-0.5" style="color: var(--muted)">꽃 피우는 재미</span>
+                            </div>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 결과 화면 -->
+            <div id="quiz-result" class="quiz-question" style="display: none;">
+                <div class="text-center py-4">
+                    <span class="text-5xl mb-3 block">🎉</span>
+                    <h3 class="text-xl font-extrabold mb-2" style="color: var(--text)">당신의 식물 매칭 완료!</h3>
+                    <p class="mb-4" style="color: var(--muted)">3가지 답변을 바탕으로 딱 맞는 식물을 골랐어요.</p>
+                </div>
+                <div id="quiz-recommended-plant" class="p-4 rounded-2xl text-center"
+                     style="background: linear-gradient(135deg, var(--tile-em-bg), var(--tile-blue-bg)); border: 2px solid var(--card-border);">
+                    <span id="quiz-result-emoji" class="text-5xl block mb-2">🌱</span>
+                    <h4 id="quiz-result-name" class="text-xl font-extrabold mb-1" style="color: var(--text)">몬스테라</h4>
+                    <p id="quiz-result-reason" class="text-sm mb-3" style="color: var(--muted)">어두운 곳에서도 잘 자라고 물도 가끔만 주면 되는 튼튼한 반려식물!</p>
+                    <button onclick="goToRecommendedPlant()" class="submit-btn w-full md:w-auto"
+                            style="background: linear-gradient(135deg, #10b981, #059669);">
+                        🌿 도감에서 자세히 보기
+                    </button>
+                </div>
+                <div class="mt-4 text-center">
+                    <button onclick="restartQuiz()" class="global-btn text-sm" style="color: var(--muted)">
+                        🔄 다시 퀴즈 풀기
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ===================== 토스트 알림 컨테이너 ===================== -->
+    <div id="toast-container" aria-live="polite"></div>
+
+    <!-- ===================== 리프 획득 팝업 컨테이너 ===================== -->
+    <div id="leaf-popup-container" aria-live="polite"></div>
+
+    <!-- ===================== 홍보용 대표 식물 카드 세션 보관 ===================== -->
+    <!--
+    ※ 아래 '대표 식물 카드' 섹션은 초기 화면에서 완전히 제외하고, 추후 홍보 페이지 제작 시 재활용할 수 있도록
+      원본 마크업 그대로 보관해 둔 영역입니다. (quickSearch 함수와 함께 그대로 사용 가능)
+    <section id="section-cards" class="space-y-4">
+        <div class="glass-card rounded-3xl p-5 md:p-6 shadow-xl">
+            <h3 class="text-lg md:text-xl font-extrabold text-emerald-900 mb-4">🖱️ 대표 식물 카드를 눌러보세요!</h3>
+            <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-7 gap-3">
+                <button onclick="quickSearch('토마토')" ...>🍅 토마토</button>
+                <button onclick="quickSearch('상추')" ...>🥬 상추</button>
+                <button onclick="quickSearch('몬스테라')" ...>🪴 몬스테라</button>
+                <button onclick="quickSearch('선인장')" ...>🌵 선인장</button>
+                <button onclick="quickSearch('해바라기')" ...>🌻 해바라기</button>
+                <button onclick="quickSearch('바질')" ...>🌿 바질</button>
+                <button onclick="quickSearch('딸기')" ...>🍓 딸기</button>
+            </div>
+        </div>
+    </section>
+    -->
+
+    <!-- JavaScript Client Application Logic -->
+    <script src="/static/js/main.js"></script>
+
+    <!-- PWA: Service Worker 등록 (오프라인 부팅 & 앱 설치 지원) -->
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('/sw.js', { scope: '/' })
+                    .then(reg => console.log('🌱 Service Worker registered:', reg.scope))
+                    .catch(err => console.warn('Service Worker registration failed:', err));
+            });
+        }
+    </script>
+</body>
+</html>

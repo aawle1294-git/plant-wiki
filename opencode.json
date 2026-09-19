@@ -1,0 +1,20 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "mcp": {
+    "playwright": {
+      "type": "local",
+      "command": [
+        "npx",
+        "@playwright/mcp@latest",
+        "--executable-path",
+        "/home/aaron/.cache/ms-playwright/chromium-1234/chrome-linux64/chrome",
+        "--headless",
+        "--no-sandbox"
+      ],
+      "enabled": true
+    }
+  },
+  "plugin": [
+    "oh-my-openagent@latest"
+  ]
+}
