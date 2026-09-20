@@ -1030,12 +1030,17 @@ def generate_plant_with_gemini(plant_name: str) -> Optional[Dict[str, Any]]:
         client = genai.Client(api_key=api_key, http_options=types.HttpOptions(timeout=15000))
 
         prompt = f"""
-너는 초등학생들을 위한 친절한 식물학자 AI 선생님이야.
-식물 이름: '{plant_name}'에 대한 재배 가이드 및 위키백과 정보를 JSON 형식으로 생성해줘.
+너는 식물 전문 AI야. 아래 두 가지 규칙을 반드시 따라.
 
-반드시 아래 필드 구조를 정확히 지킨 유효한 JSON 형식으로 답해야 해:
+[규칙 1] '{plant_name}'이(가) 실제 존재하는 식물(나무, 풀, 꽃, 채소, 과일나무, 이끼, 버섯 등)인지 먼저 판단해.
+기계, 자동차, 동물, 사람, 음식(식물이 아닌 가공식품), 장소, 사물, 개념어 등은 식물이 아니야.
+
+[규칙 2-A] 만약 식물이 아니라면, 다른 필드 없이 아래 JSON 하나만 반환해:
+{{"is_plant": false}}
+
+[규칙 2-B] 만약 식물이 맞다면, 아래 필드를 전부 채운 JSON을 반환해:
 {{
-  "is_plant": true 또는 false (검색어가 실제 식물인지 여부. 강아지, 자동차, 컴퓨터 같은 비식물이면 반드시 false, 식물이면 true)",
+  "is_plant": true,
   "name": "{plant_name}",
   "scientific_name": "학명 (예: Solanum lycopersicum)",
   "emoji": "해당 식물과 어울리는 이모지 1개",
@@ -1050,11 +1055,11 @@ def generate_plant_with_gemini(plant_name: str) -> Optional[Dict[str, Any]]:
     {{"name": "병충해 이름", "symptom": "어떤 증상이 나타나는지", "treatment": "아이들도 실천할 수 있는 대처법"}}
   ],
   "belief_check": {{
-    "myth": "이 식물에 대해 사람들이 흔히 오해하거나 믿는 유명한 재배 상식/루머 문장 1개 (예: '몬스테라는 물을 많이 안 줘도 된다!')",
-    "verdict": true 또는 false (이 상식이 과학적으로 맞는지 여부)",
-    "true_percent": 0부터 100 사이 정수 (상식이 맞다고 판단할 확률)",
-    "false_percent": 0부터 100 사이 정수 (상식이 틀렸다고 판단할 확률)",
-    "summary": "한 줄 요약 문장 (예: 'AI 분석 결과: 이 상식은 대체로 사실에 가깝습니다!')"
+    "myth": "이 식물에 대해 사람들이 흔히 오해하거나 믿는 유명한 재배 상식/루머 문장 1개",
+    "verdict": true,
+    "true_percent": 50,
+    "false_percent": 50,
+    "summary": "한 줄 요약 문장"
   }}
 }}
 pests 는 반드시 2~3개 항목을 가진 배열로 해줘.
@@ -1089,6 +1094,10 @@ JSON 외의 다른 추가 설명 문장은 절대 포함하지 마.
 def generate_fallback_plant_data(plant_name: str) -> Dict[str, Any]:
     """Fallback generator when Gemini API is unavailable or for unregistered plants."""
     clean_name = plant_name.strip()
+
+    # 비식물 키워드는 폴백에서도 차단
+    if looks_like_non_plant(clean_name):
+        return {"is_plant": False}
 
     if clean_name in PRESET_PLANTS:
         res = dict(PRESET_PLANTS[clean_name])
@@ -1166,6 +1175,9 @@ async def search_plant(payload: SearchRequest, request: Request):
             if not plant_data:
                 logger.info(f"모든 Gemini 모델 실패 또는 미지원 식물 '{plant_name}' - 폴백 데이터 생성")
                 plant_data = generate_fallback_plant_data(norm_name)
+            # 폴백에서도 비식물로 판정되면 차단
+            if plant_data is not None and plant_data.get("is_plant") is False:
+                return {"status": "guardrail", "message": GUARDRAIL_MESSAGE}
             # 캐시에 저장 (최대 200개, 이후 FIFO 제거)
             if len(PLANT_CACHE) >= 200:
                 PLANT_CACHE.pop(next(iter(PLANT_CACHE)))
