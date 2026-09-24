@@ -125,34 +125,38 @@
             </div>
         </form>
 
-        <!-- 플로팅 식물 상식 카드 (Trivia) -->
-        <div id="trivia" class="mt-9 flex flex-col items-center w-full">
-            <p class="mb-3 text-[11px] font-bold tracking-wide" style="color: var(--muted)">✨ 오늘의 식물 상식 — 카드를 눌러 AI에게 물어보세요</p>
-            <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 w-full max-w-3xl">
-                <button class="trivia-card" onclick="quickSearch('로즈마리')" aria-label="로즈마리 상식 검색">
-                    <span class="tc-emoji">🌿</span>
-                    <span class="tc-body">
-                        <b>로즈마리</b>
-                        <span>통풍이 안 되면 벌레가 생겨요!</span>
-                    </span>
-                    <span class="tc-cta">판별 →</span>
-                </button>
-                <button class="trivia-card" onclick="quickSearch('몬스테라')" aria-label="몬스테라 상식 검색">
-                    <span class="tc-emoji">🪴</span>
-                    <span class="tc-body">
-                        <b>몬스테라</b>
-                        <span>갈라진 잎은 빗물을 피하려는 거예요!</span>
-                    </span>
-                    <span class="tc-cta">판별 →</span>
-                </button>
-                <button class="trivia-card" onclick="quickSearch('토마토')" aria-label="토마토 상식 검색">
-                    <span class="tc-emoji">🍅</span>
-                    <span class="tc-body">
-                        <b>토마토</b>
-                        <span>물 많이 줄수록 맛있다? 루머예요!</span>
-                    </span>
-                    <span class="tc-cta">판별 →</span>
-                </button>
+        <!-- 추천 식물 가이드 (SEO/AdSense 정적 콘텐츠) -->
+        <div id="static-content" class="mt-9 flex flex-col items-center w-full">
+            <h2 class="mb-3 text-[12px] font-bold tracking-wide" style="color: var(--muted)">📖 오늘의 추천 식물 가이드 (카드를 눌러 상세 검색)</h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-3 w-full max-w-3xl text-left">
+                <!-- Card 1 -->
+                <article class="bg-white/60 dark:bg-black/20 p-3 rounded-2xl border backdrop-blur-sm hover:shadow-md transition-shadow cursor-pointer" style="border-color: var(--card-border)" onclick="quickSearch('몬스테라')">
+                    <h3 class="font-extrabold text-emerald-700 dark:text-emerald-400 mb-1 flex items-center gap-1.5">🪴 몬스테라 키우기</h3>
+                    <p class="text-[11px] leading-relaxed text-gray-700 dark:text-gray-300">
+                        몬스테라는 실내 인테리어 식물(플랜테리어)로 가장 사랑받는 관엽식물입니다. 구멍이 뚫리거나 갈라진 독특한 잎 모양이 특징이며, 이는 열대 우림에서 강한 비바람을 견디고 아래쪽 잎에도 햇빛을 전달하기 위한 진화의 결과입니다. 직사광선을 피한 밝은 반그늘에서 잘 자라며, 겉흙이 충분히 말랐을 때 물을 흠뻑 주는 것이 좋습니다. 초보 식집사도 쉽게 키울 수 있습니다.
+                    </p>
+                </article>
+                <!-- Card 2 -->
+                <article class="bg-white/60 dark:bg-black/20 p-3 rounded-2xl border backdrop-blur-sm hover:shadow-md transition-shadow cursor-pointer" style="border-color: var(--card-border)" onclick="quickSearch('로즈마리')">
+                    <h3 class="font-extrabold text-blue-700 dark:text-blue-400 mb-1 flex items-center gap-1.5">🌿 로즈마리 재배법</h3>
+                    <p class="text-[11px] leading-relaxed text-gray-700 dark:text-gray-300">
+                        로즈마리는 상쾌하고 강렬한 향기를 지닌 대표적인 허브 식물로, 요리 향신료나 차, 방향제 등으로 널리 활용됩니다. 지중해 연안이 원산지인 만큼 햇빛을 매우 좋아하며, 통풍이 잘 되는 환경이 필수적입니다. 과습에 취약하므로 물 빠짐이 좋은 흙(마사토 비율을 높게)에 심고, 흙이 완전히 건조해졌을 때 물을 주어야 뿌리 파리를 예방하고 건강하게 기를 수 있습니다.
+                    </p>
+                </article>
+                <!-- Card 3 -->
+                <article class="bg-white/60 dark:bg-black/20 p-3 rounded-2xl border backdrop-blur-sm hover:shadow-md transition-shadow cursor-pointer" style="border-color: var(--card-border)" onclick="quickSearch('스투키')">
+                    <h3 class="font-extrabold text-teal-700 dark:text-teal-400 mb-1 flex items-center gap-1.5">🌵 스투키 공기정화</h3>
+                    <p class="text-[11px] leading-relaxed text-gray-700 dark:text-gray-300">
+                        산세베리아 스투키는 원통형의 길쭉한 잎이 매력적인 다육식물입니다. 밤에도 이산화탄소를 흡수하고 산소를 방출하는 CAM 광합성을 하여 침실용 공기정화 식물로 탁월합니다. 체내에 물을 저장하는 능력이 뛰어나 한 달에 한 번 정도만 물을 주어도 끄떡없을 정도로 관리가 편합니다. 추위에는 약하므로 겨울철에는 실내 따뜻한 곳에서 관리하는 것이 중요합니다.
+                    </p>
+                </article>
+                <!-- Card 4 -->
+                <article class="bg-white/60 dark:bg-black/20 p-3 rounded-2xl border backdrop-blur-sm hover:shadow-md transition-shadow cursor-pointer" style="border-color: var(--card-border)" onclick="quickSearch('토마토')">
+                    <h3 class="font-extrabold text-rose-700 dark:text-rose-400 mb-1 flex items-center gap-1.5">🍅 방울토마토 텃밭</h3>
+                    <p class="text-[11px] leading-relaxed text-gray-700 dark:text-gray-300">
+                        방울토마토는 베란다 텃밭이나 주말 농장에서 가장 인기 있는 작물입니다. 햇빛을 매우 좋아해 하루 6시간 이상 볕이 드는 곳에서 키워야 열매가 달고 풍성하게 맺힙니다. 영양분을 많이 필요로 하므로 주기적인 비료 공급이 필요하며, 곁순을 꾸준히 제거해 주어야 본줄기가 튼튼하게 자라 병충해를 예방하고 크고 맛있는 열매를 수확할 수 있습니다.
+                    </p>
+                </article>
             </div>
         </div>
 
