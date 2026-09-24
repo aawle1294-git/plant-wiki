@@ -1517,6 +1517,40 @@ async def api_status():
         "version": "2.0.0",
     }
 
+from fastapi.responses import Response
+
+@app.get("/robots.txt", include_in_schema=False)
+async def get_robots_txt():
+    content = """User-agent: *
+Allow: /
+Sitemap: https://plantwiki.kro.kr/sitemap.xml
+"""
+    return Response(content=content, media_type="text/plain")
+
+@app.get("/sitemap.xml", include_in_schema=False)
+async def get_sitemap_xml():
+    # 간단한 정적 사이트맵 (기본 페이지와 주요 정적 뷰)
+    content = """<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url>
+    <loc>https://plantwiki.kro.kr/</loc>
+    <changefreq>daily</changefreq>
+    <priority>1.0</priority>
+  </url>
+  <url>
+    <loc>https://plantwiki.kro.kr/?view=shop</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://plantwiki.kro.kr/?view=dashboard</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+</urlset>
+"""
+    return Response(content=content, media_type="application/xml")
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run("app:app", host="0.0.0.0", port=8000, reload=True)
