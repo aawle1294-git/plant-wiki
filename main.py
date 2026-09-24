@@ -1136,6 +1136,14 @@ def generate_fallback_plant_data(plant_name: str) -> Dict[str, Any]:
 async def read_root(request: Request):
     return templates.TemplateResponse(request=request, name="index.html", context={})
 
+@app.get("/privacy", response_class=HTMLResponse)
+async def serve_privacy(request: Request):
+    return templates.TemplateResponse(request=request, name="privacy.html", context={})
+
+@app.get("/terms", response_class=HTMLResponse)
+async def serve_terms(request: Request):
+    return templates.TemplateResponse(request=request, name="terms.html", context={})
+
 @app.post("/api/search")
 async def search_plant(payload: SearchRequest, request: Request):
     plant_name = payload.name.strip()
