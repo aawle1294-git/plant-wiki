@@ -31,17 +31,19 @@ app = FastAPI(
 
 
 def _load_dotenv():
-    """프로젝트 루트의 .env 파일에서 SUPABASE_URL / SUPABASE_ANON_KEY 등을 로드한다."""
-    path = os.path.join(os.path.dirname(__file__), ".env")
-    if not os.path.exists(path):
-        return
-    with open(path, encoding="utf-8") as f:
-        for line in f:
-            line = line.strip()
-            if not line or line.startswith("#") or "=" not in line:
-                continue
-            key, _, value = line.partition("=")
-            os.environ.setdefault(key.strip(), value.strip().strip('"').strip("'"))
+    """프로젝트 루트의 .env 또는 렌더의 /etc/secrets/.env 파일에서 로드한다."""
+    paths = [os.path.join(os.path.dirname(__file__), ".env"), "/etc/secrets/.env"]
+    for path in paths:
+        if not os.path.exists(path):
+            continue
+        with open(path, encoding="utf-8") as f:
+            for line in f:
+                line = line.strip()
+                if not line or line.startswith("#") or "=" not in line:
+                    continue
+                key, _, value = line.partition("=")
+                os.environ.setdefault(key.strip(), value.strip().strip('"').strip("'"))
+        break
 
 
 _load_dotenv()
