@@ -68,6 +68,11 @@ async def service_worker():
         headers={"Service-Worker-Allowed": "/", "Cache-Control": "no-cache"},
     )
 
+# 서버 슬립 방지용 ping 엔드포인트 (cron-job.org 등 외부 핑봇 전용)
+@app.get("/ping")
+async def ping():
+    return JSONResponse(content={"status": "ok"})
+
 # 개발 모드 플래그 (google-quick 등 개발용 기능 제어)
 DEV_MODE = os.environ.get("DEV_MODE", "false").lower() == "true"
 
