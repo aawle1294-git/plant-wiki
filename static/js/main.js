@@ -856,8 +856,22 @@
         }
 
         function handleSearch(event) {
-            event.preventDefault();
-            const q = getActiveQuery();
+            if (event) event.preventDefault();
+            let q = '';
+
+            // 1. 전송된 폼(event.target) 내의 입력창에서 직접 추출
+            if (event && event.target && event.target.querySelector) {
+                const inputEl = event.target.querySelector('input[type="text"], input');
+                if (inputEl && inputEl.value.trim()) {
+                    q = inputEl.value.trim();
+                }
+            }
+
+            // 2. 없으면 getActiveQuery()로 폴백
+            if (!q) {
+                q = getActiveQuery();
+            }
+
             if (!q) {
                 showToast('🌱 식물 이름을 입력해 주세요.', 'info');
                 return;
