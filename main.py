@@ -1289,7 +1289,9 @@ async def oauth_google(redirect_to: Optional[str] = None):
             status_code=503,
             content={"status": "error", "message": "Supabase가 설정되지 않았습니다."}
         )
-    target = redirect_to or "http://localhost:8000"
+    # FRONTEND_URL 환경변수 우선 → 없으면 클라이언트가 보낸 redirect_to → 최후엔 localhost
+    FRONTEND_URL = os.getenv("FRONTEND_URL", "").strip()
+    target = FRONTEND_URL or redirect_to or "http://localhost:8000"
     authorize_url = f"{SUPABASE_URL}/auth/v1/authorize?provider=google&redirect_to={target}"
 
     # Supabase Provider 활성화 여부 사전 검사
