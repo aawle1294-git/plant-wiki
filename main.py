@@ -1373,6 +1373,8 @@ async def update_my_profile(payload: ProfileUpdateRequest, request: Request):
         if not clean_avatar:
             clean_avatar = "🌱"
         updates["avatar_emoji"] = clean_avatar
+    if payload.title is not None:
+        updates["title"] = payload.title.strip()
 
     profile = _update_profile(user["token"], user["id"], updates)
     return {"status": "success", "message": "프로필이 수정되었습니다.", "data": profile}
@@ -1394,8 +1396,14 @@ async def post_shop_buy(payload: BuyItemRequest, request: Request):
     # 리프 차감 트랜잭션 기록
     new_balance = _add_leaf_transaction(user["token"], user["id"], -payload.price, f"buy_item:{payload.item_id}")
     
-    # 아바타 변경
-    updated_prof = _update_profile(user["token"], user["id"], {"avatar_emoji": payload.emoji})
+    # 아바타 또는 칭호 업데이트
+    updates = {}
+    if payload.item_type == "title" or payload.title:
+        updates["title"] = payload.title or payload.item_id
+    elif payload.emoji:
+        updates["avatar_emoji"] = payload.emoji
+
+    updated_prof = _update_profile(user["token"], user["id"], updates) if updates else prof
     
     return {
         "status": "success", 

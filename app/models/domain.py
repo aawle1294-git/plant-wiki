@@ -12,11 +12,14 @@ class AuthRequest(BaseModel):
 class ProfileUpdateRequest(BaseModel):
     nickname: Optional[str] = None
     avatar_emoji: Optional[str] = None
+    title: Optional[str] = None
 
 class BuyItemRequest(BaseModel):
     item_id: str
     price: int
-    emoji: str
+    emoji: Optional[str] = ""
+    title: Optional[str] = None
+    item_type: Optional[str] = "avatar"
 
 class WateringScheduleCreate(BaseModel):
     plant_name: str

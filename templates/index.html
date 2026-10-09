@@ -82,6 +82,7 @@
                 <div id="auth-user-chip" class="auth-user-chip hidden" onclick="openProfileModal()" title="나의 프로필 & 연속학습 (클릭하여 열기)" aria-label="나의 프로필 및 연속학습">
                     <span id="auth-user-avatar">🌱</span>
                     <span id="auth-user-name" class="hidden sm:inline">식집사</span>
+                    <span id="auth-user-title" class="px-2 py-0.5 rounded-full text-[10px] font-bold hidden sm:inline-flex" style="background: var(--tile-purple-bg); color: var(--tile-purple-tx);">새싹</span>
                     <span class="chip-badge leaf hidden sm:inline-flex" title="보유 리프">🍃 <span id="auth-user-leaves">50</span></span>
                     <span class="chip-badge streak" title="연속 학습 스트릭"><span class="streak-flame-pulse">🔥</span> <span id="auth-user-streak">1일</span></span>
                 </div>
@@ -131,8 +132,8 @@
                 <span class="text-xs font-bold tracking-wide flex items-center gap-1.5" style="color: var(--muted)">
                     <span>💡</span> 오늘의 추천 식물 <span class="text-[11px] font-normal opacity-80 hidden sm:inline">(클릭하여 바로 탐색)</span>
                 </span>
-                <button type="button" onclick="renderRandomRecommendPlants()" class="text-xs font-semibold flex items-center gap-1 px-2.5 py-1 rounded-full border hover:scale-105 transition-all cursor-pointer"
-                        style="background: var(--card-bg); border-color: var(--card-border); color: var(--muted);" title="다른 식물 추천받기">
+                <button type="button" onclick="renderRandomRecommendPlants()" class="recommend-refresh-btn text-xs font-semibold flex items-center gap-1 px-2.5 py-1 rounded-full border cursor-pointer"
+                        title="다른 식물 추천받기">
                     <span>🔄</span> 다른 식물
                 </button>
             </div>
@@ -333,6 +334,11 @@
 
             <!-- 물주기 카드 리스트 (로그인 시 표시) -->
             <div id="watering-cards-container" class="hidden">
+                <div id="watering-warm-quote" class="p-3 mb-4 rounded-2xl text-xs sm:text-sm font-semibold flex items-center gap-2 border shadow-xs"
+                     style="background: var(--tile-blue-bg); color: var(--tile-blue-tx); border-color: var(--card-border);">
+                    <span class="text-base">💧</span>
+                    <span id="watering-warm-quote-text">우리 초록 친구가 목말라해요. 사랑의 물 한 방울 어때요? 💧🌿</span>
+                </div>
                 <div id="watering-cards-list"></div>
                 <div id="watering-empty" class="dashboard-empty hidden">
                     <span class="dashboard-empty-emoji">🌱</span>
@@ -508,7 +514,10 @@
                         <input type="text" id="profile-nickname-input" class="profile-nick-input font-bold text-base" value="새싹 식집사" maxlength="20" aria-label="닉네임">
                         <button type="button" class="save-nick-btn text-xs font-semibold px-2.5 py-1 rounded-lg" onclick="saveNickname()">저장</button>
                     </div>
-                    <p id="profile-email-display" class="text-xs mt-1 text-slate-400 truncate"></p>
+                    <div class="flex items-center gap-2 mt-1">
+                        <span id="profile-title-display" class="text-[11px] font-bold px-2.5 py-0.5 rounded-full" style="background: var(--tile-purple-bg); color: var(--tile-purple-tx);">칭호: 새싹</span>
+                        <p id="profile-email-display" class="text-xs text-slate-400 truncate"></p>
+                    </div>
                 </div>
             </div>
 
@@ -590,58 +599,167 @@
                     <span>🛒</span> 꾸미기 상점
                 </h3>
                 <div class="flex items-center gap-3">
-                    <span class="font-bold text-sm bg-emerald-100 text-emerald-800 px-3 py-1 rounded-full dark:bg-emerald-900/30 dark:text-emerald-400">
+                    <span class="shop-leaf-chip font-bold text-sm px-3 py-1 rounded-full">
                         내 리프: 🍃 <span id="shop-my-leaves">0</span>
                     </span>
                     <button onclick="closeShopModal()" class="global-btn" aria-label="상점 닫기">✕</button>
                 </div>
             </div>
             
-            <p class="text-sm mb-4" style="color: var(--muted)">모은 리프를 사용해서 프로필 아바타를 구매해보세요! 구매한 아이템은 프로필에서 사용할 수 있습니다.</p>
+            <!-- 상점 탭 -->
+            <div class="auth-tabs mb-4" role="tablist">
+                <button type="button" id="shop-tab-avatar" class="auth-tab active" onclick="switchShopTab('avatar')">🎨 아바타</button>
+                <button type="button" id="shop-tab-title" class="auth-tab" onclick="switchShopTab('title')">🏷️ 식집사 칭호 (10선)</button>
+            </div>
             
-            <div class="grid grid-cols-2 sm:grid-cols-3 gap-4" id="shop-items-container">
+            <!-- 탭 1: 아바타 아이템 -->
+            <div id="shop-pane-avatar" class="grid grid-cols-2 sm:grid-cols-4 gap-3">
                 <!-- 아바타 아이템 1 -->
-                <div class="shop-item-card flex flex-col items-center justify-between p-4 rounded-2xl" style="background: var(--card-bg); border: 1px solid var(--card-border);">
-                    <div class="text-center mb-3">
-                        <div class="text-4xl mb-2">🌻</div>
-                        <h4 class="font-bold text-sm">해바라기 아바타</h4>
-                        <p class="text-[11px] text-muted mt-1">밝고 긍정적인 식집사</p>
+                <div class="shop-item-card flex flex-col items-center justify-between p-3.5 rounded-2xl" style="background: var(--card-bg); border: 1px solid var(--card-border);">
+                    <div class="text-center mb-2">
+                        <div class="text-3xl mb-1">🌻</div>
+                        <h4 class="font-bold text-xs">해바라기</h4>
+                        <p class="text-[10px] text-muted mt-0.5">밝고 긍정적인</p>
                     </div>
-                    <button class="w-full py-1.5 rounded-lg text-sm font-bold bg-emerald-100 text-emerald-700 hover:bg-emerald-200 dark:bg-emerald-900/40 dark:text-emerald-400 dark:hover:bg-emerald-800/60 transition-colors" onclick="buyItem('avatar_sunflower', 50, '🌻')">
+                    <button class="w-full py-1.5 rounded-lg text-xs font-bold bg-emerald-100 text-emerald-700 hover:bg-emerald-200 dark:bg-emerald-900/40 dark:text-emerald-400 transition-colors cursor-pointer" onclick="buyItem('avatar_sunflower', 50, '🌻')">
                         🍃 50 구매
                     </button>
                 </div>
                 <!-- 아바타 아이템 2 -->
-                <div class="shop-item-card flex flex-col items-center justify-between p-4 rounded-2xl" style="background: var(--card-bg); border: 1px solid var(--card-border);">
-                    <div class="text-center mb-3">
-                        <div class="text-4xl mb-2">🌵</div>
-                        <h4 class="font-bold text-sm">선인장 아바타</h4>
-                        <p class="text-[11px] text-muted mt-1">강인한 생명력의 소유자</p>
+                <div class="shop-item-card flex flex-col items-center justify-between p-3.5 rounded-2xl" style="background: var(--card-bg); border: 1px solid var(--card-border);">
+                    <div class="text-center mb-2">
+                        <div class="text-3xl mb-1">🌵</div>
+                        <h4 class="font-bold text-xs">선인장</h4>
+                        <p class="text-[10px] text-muted mt-0.5">강인한 생명력</p>
                     </div>
-                    <button class="w-full py-1.5 rounded-lg text-sm font-bold bg-emerald-100 text-emerald-700 hover:bg-emerald-200 dark:bg-emerald-900/40 dark:text-emerald-400 dark:hover:bg-emerald-800/60 transition-colors" onclick="buyItem('avatar_cactus', 100, '🌵')">
+                    <button class="w-full py-1.5 rounded-lg text-xs font-bold bg-emerald-100 text-emerald-700 hover:bg-emerald-200 dark:bg-emerald-900/40 dark:text-emerald-400 transition-colors cursor-pointer" onclick="buyItem('avatar_cactus', 100, '🌵')">
                         🍃 100 구매
                     </button>
                 </div>
                 <!-- 아바타 아이템 3 -->
-                <div class="shop-item-card flex flex-col items-center justify-between p-4 rounded-2xl" style="background: var(--card-bg); border: 1px solid var(--card-border);">
-                    <div class="text-center mb-3">
-                        <div class="text-4xl mb-2">🌸</div>
-                        <h4 class="font-bold text-sm">벚꽃 아바타</h4>
-                        <p class="text-[11px] text-muted mt-1">봄을 기다리는 식집사</p>
+                <div class="shop-item-card flex flex-col items-center justify-between p-3.5 rounded-2xl" style="background: var(--card-bg); border: 1px solid var(--card-border);">
+                    <div class="text-center mb-2">
+                        <div class="text-3xl mb-1">🌸</div>
+                        <h4 class="font-bold text-xs">벚꽃</h4>
+                        <p class="text-[10px] text-muted mt-0.5">봄의 싱그러움</p>
                     </div>
-                    <button class="w-full py-1.5 rounded-lg text-sm font-bold bg-emerald-100 text-emerald-700 hover:bg-emerald-200 dark:bg-emerald-900/40 dark:text-emerald-400 dark:hover:bg-emerald-800/60 transition-colors" onclick="buyItem('avatar_cherryblossom', 150, '🌸')">
+                    <button class="w-full py-1.5 rounded-lg text-xs font-bold bg-emerald-100 text-emerald-700 hover:bg-emerald-200 dark:bg-emerald-900/40 dark:text-emerald-400 transition-colors cursor-pointer" onclick="buyItem('avatar_cherryblossom', 150, '🌸')">
                         🍃 150 구매
                     </button>
                 </div>
                 <!-- 아바타 아이템 4 -->
-                <div class="shop-item-card flex flex-col items-center justify-between p-4 rounded-2xl" style="background: var(--card-bg); border: 1px solid var(--card-border);">
-                    <div class="text-center mb-3">
-                        <div class="text-4xl mb-2">🍄</div>
-                        <h4 class="font-bold text-sm">버섯 아바타</h4>
-                        <p class="text-[11px] text-muted mt-1">촉촉한 환경을 좋아하는</p>
+                <div class="shop-item-card flex flex-col items-center justify-between p-3.5 rounded-2xl" style="background: var(--card-bg); border: 1px solid var(--card-border);">
+                    <div class="text-center mb-2">
+                        <div class="text-3xl mb-1">🍄</div>
+                        <h4 class="font-bold text-xs">버섯</h4>
+                        <p class="text-[10px] text-muted mt-0.5">촉촉한 숲속 요정</p>
                     </div>
-                    <button class="w-full py-1.5 rounded-lg text-sm font-bold bg-emerald-100 text-emerald-700 hover:bg-emerald-200 dark:bg-emerald-900/40 dark:text-emerald-400 dark:hover:bg-emerald-800/60 transition-colors" onclick="buyItem('avatar_mushroom', 200, '🍄')">
+                    <button class="w-full py-1.5 rounded-lg text-xs font-bold bg-emerald-100 text-emerald-700 hover:bg-emerald-200 dark:bg-emerald-900/40 dark:text-emerald-400 transition-colors cursor-pointer" onclick="buyItem('avatar_mushroom', 200, '🍄')">
                         🍃 200 구매
+                    </button>
+                </div>
+            </div>
+
+            <!-- 탭 2: 식집사 칭호 10선 -->
+            <div id="shop-pane-title" class="hidden grid grid-cols-1 sm:grid-cols-2 gap-2.5 max-h-[360px] overflow-y-auto pr-1">
+                <!-- 칭호 1 -->
+                <div class="shop-title-card flex items-center justify-between p-3 rounded-2xl border" style="background: var(--card-bg); border-color: var(--card-border)">
+                    <div>
+                        <h4 class="font-extrabold text-sm text-emerald-600 dark:text-emerald-400">초록손가락 🌱</h4>
+                        <p class="text-[11px] text-muted mt-0.5">무엇이든 살려내는 마법의 손</p>
+                    </div>
+                    <button class="px-3 py-1.5 rounded-xl text-xs font-bold bg-emerald-100 text-emerald-700 hover:bg-emerald-200 dark:bg-emerald-900/50 dark:text-emerald-300 cursor-pointer" onclick="buyTitle('title_greenfinger', 30, '초록손가락 🌱')">
+                        🍃 30 구매
+                    </button>
+                </div>
+                <!-- 칭호 2 -->
+                <div class="shop-title-card flex items-center justify-between p-3 rounded-2xl border" style="background: var(--card-bg); border-color: var(--card-border)">
+                    <div>
+                        <h4 class="font-extrabold text-sm text-emerald-600 dark:text-emerald-400">몬스테라 집사 🍃</h4>
+                        <p class="text-[11px] text-muted mt-0.5">찢어진 잎에 반해버린 집사</p>
+                    </div>
+                    <button class="px-3 py-1.5 rounded-xl text-xs font-bold bg-emerald-100 text-emerald-700 hover:bg-emerald-200 dark:bg-emerald-900/50 dark:text-emerald-300 cursor-pointer" onclick="buyTitle('title_monstera', 40, '몬스테라 집사 🍃')">
+                        🍃 40 구매
+                    </button>
+                </div>
+                <!-- 칭호 3 -->
+                <div class="shop-title-card flex items-center justify-between p-3 rounded-2xl border" style="background: var(--card-bg); border-color: var(--card-border)">
+                    <div>
+                        <h4 class="font-extrabold text-sm text-emerald-600 dark:text-emerald-400">과습 주의보 💦</h4>
+                        <p class="text-[11px] text-muted mt-0.5">사랑이 넘쳐 물을 너무 자주 주는</p>
+                    </div>
+                    <button class="px-3 py-1.5 rounded-xl text-xs font-bold bg-emerald-100 text-emerald-700 hover:bg-emerald-200 dark:bg-emerald-900/50 dark:text-emerald-300 cursor-pointer" onclick="buyTitle('title_overwatering', 50, '과습 주의보 💦')">
+                        🍃 50 구매
+                    </button>
+                </div>
+                <!-- 칭호 4 -->
+                <div class="shop-title-card flex items-center justify-between p-3 rounded-2xl border" style="background: var(--card-bg); border-color: var(--card-border)">
+                    <div>
+                        <h4 class="font-extrabold text-sm text-emerald-600 dark:text-emerald-400">뿌리 짱짱맨 🌿</h4>
+                        <p class="text-[11px] text-muted mt-0.5">튼튼한 뿌리 발달의 대가</p>
+                    </div>
+                    <button class="px-3 py-1.5 rounded-xl text-xs font-bold bg-emerald-100 text-emerald-700 hover:bg-emerald-200 dark:bg-emerald-900/50 dark:text-emerald-300 cursor-pointer" onclick="buyTitle('title_strongroots', 60, '뿌리 짱짱맨 🌿')">
+                        🍃 60 구매
+                    </button>
+                </div>
+                <!-- 칭호 5 -->
+                <div class="shop-title-card flex items-center justify-between p-3 rounded-2xl border" style="background: var(--card-bg); border-color: var(--card-border)">
+                    <div>
+                        <h4 class="font-extrabold text-sm text-emerald-600 dark:text-emerald-400">잎사귀 요정 🍀</h4>
+                        <p class="text-[11px] text-muted mt-0.5">매일 잎을 닦아주는 섬세함</p>
+                    </div>
+                    <button class="px-3 py-1.5 rounded-xl text-xs font-bold bg-emerald-100 text-emerald-700 hover:bg-emerald-200 dark:bg-emerald-900/50 dark:text-emerald-300 cursor-pointer" onclick="buyTitle('title_leaffairy', 70, '잎사귀 요정 🍀')">
+                        🍃 70 구매
+                    </button>
+                </div>
+                <!-- 칭호 6 -->
+                <div class="shop-title-card flex items-center justify-between p-3 rounded-2xl border" style="background: var(--card-bg); border-color: var(--card-border)">
+                    <div>
+                        <h4 class="font-extrabold text-sm text-emerald-600 dark:text-emerald-400">햇살 모으미 ☀️</h4>
+                        <p class="text-[11px] text-muted mt-0.5">식물 따라 화분 옮기는 부지런함</p>
+                    </div>
+                    <button class="px-3 py-1.5 rounded-xl text-xs font-bold bg-emerald-100 text-emerald-700 hover:bg-emerald-200 dark:bg-emerald-900/50 dark:text-emerald-300 cursor-pointer" onclick="buyTitle('title_sunseeker', 80, '햇살 모으미 ☀️')">
+                        🍃 80 구매
+                    </button>
+                </div>
+                <!-- 칭호 7 -->
+                <div class="shop-title-card flex items-center justify-between p-3 rounded-2xl border" style="background: var(--card-bg); border-color: var(--card-border)">
+                    <div>
+                        <h4 class="font-extrabold text-sm text-emerald-600 dark:text-emerald-400">다육이 사랑꾼 🌵</h4>
+                        <p class="text-[11px] text-muted mt-0.5">통통한 잎만 봐도 힐링되는</p>
+                    </div>
+                    <button class="px-3 py-1.5 rounded-xl text-xs font-bold bg-emerald-100 text-emerald-700 hover:bg-emerald-200 dark:bg-emerald-900/50 dark:text-emerald-300 cursor-pointer" onclick="buyTitle('title_succulent', 90, '다육이 사랑꾼 🌵')">
+                        🍃 90 구매
+                    </button>
+                </div>
+                <!-- 칭호 8 -->
+                <div class="shop-title-card flex items-center justify-between p-3 rounded-2xl border" style="background: var(--card-bg); border-color: var(--card-border)">
+                    <div>
+                        <h4 class="font-extrabold text-sm text-emerald-600 dark:text-emerald-400">물폭탄 피하기 달인 💧</h4>
+                        <p class="text-[11px] text-muted mt-0.5">완벽한 물주기 타이밍의 고수</p>
+                    </div>
+                    <button class="px-3 py-1.5 rounded-xl text-xs font-bold bg-emerald-100 text-emerald-700 hover:bg-emerald-200 dark:bg-emerald-900/50 dark:text-emerald-300 cursor-pointer" onclick="buyTitle('title_watermaster', 100, '물폭탄 피하기 달인 💧')">
+                        🍃 100 구매
+                    </button>
+                </div>
+                <!-- 칭호 9 -->
+                <div class="shop-title-card flex items-center justify-between p-3 rounded-2xl border" style="background: var(--card-bg); border-color: var(--card-border)">
+                    <div>
+                        <h4 class="font-extrabold text-sm text-emerald-600 dark:text-emerald-400">식물 수호천사 🌸</h4>
+                        <p class="text-[11px] text-muted mt-0.5">벌레와 시듦으로부터 지켜내는</p>
+                    </div>
+                    <button class="px-3 py-1.5 rounded-xl text-xs font-bold bg-emerald-100 text-emerald-700 hover:bg-emerald-200 dark:bg-emerald-900/50 dark:text-emerald-300 cursor-pointer" onclick="buyTitle('title_guardian', 120, '식물 수호천사 🌸')">
+                        🍃 120 구매
+                    </button>
+                </div>
+                <!-- 칭호 10 -->
+                <div class="shop-title-card flex items-center justify-between p-3 rounded-2xl border" style="background: var(--card-bg); border-color: var(--card-border)">
+                    <div>
+                        <h4 class="font-extrabold text-sm text-emerald-600 dark:text-emerald-400">새싹 스냅챔피언 📸</h4>
+                        <p class="text-[11px] text-muted mt-0.5">매일 새 잎 사진 찍는 진정한 덕후</p>
+                    </div>
+                    <button class="px-3 py-1.5 rounded-xl text-xs font-bold bg-emerald-100 text-emerald-700 hover:bg-emerald-200 dark:bg-emerald-900/50 dark:text-emerald-300 cursor-pointer" onclick="buyTitle('title_snapchamp', 150, '새싹 스냅챔피언 📸')">
+                        🍃 150 구매
                     </button>
                 </div>
             </div>
@@ -916,7 +1034,7 @@
     </footer>
 
     <!-- JavaScript Client Application Logic -->
-    <script src="/static/js/main.js?v=20261009_4"></script>
+    <script src="/static/js/main.js?v=20261009_5"></script>
 
     <!-- PWA: Service Worker 등록 (오프라인 부팅 & 앱 설치 지원) -->
     <script>

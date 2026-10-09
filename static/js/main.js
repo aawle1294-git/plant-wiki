@@ -251,17 +251,21 @@
             }
             if (leavesEl) leavesEl.innerText = profile.leaf_balance ?? 50;
             if (streakEl) streakEl.innerText = `${profile.streak_count ?? 1}일`;
+            const titleEl = document.getElementById('auth-user-title');
+            if (titleEl) titleEl.innerText = profile.title || '새싹';
 
             // 2. 프로필 모달 내부 반영
             const modalAvatar = document.getElementById('profile-avatar-display');
             const nickInput = document.getElementById('profile-nickname-input');
             const emailDisp = document.getElementById('profile-email-display');
+            const modalTitle = document.getElementById('profile-title-display');
             const leafCount = document.getElementById('profile-leaf-count');
             const streakCount = document.getElementById('profile-streak-count');
 
             if (modalAvatar) modalAvatar.innerText = profile.avatar_emoji || '🌱';
             if (nickInput && document.activeElement !== nickInput) nickInput.value = profile.nickname || '새싹 식집사';
             if (emailDisp) emailDisp.innerText = profile.email || '';
+            if (modalTitle) modalTitle.innerText = `칭호: ${profile.title || '새싹'}`;
             if (leafCount) leafCount.innerText = profile.leaf_balance ?? 50;
             if (streakCount) streakCount.innerText = profile.streak_count ?? 1;
 
@@ -341,26 +345,83 @@
             if (e.target === e.currentTarget) closeShopModal();
         }
 
+        function switchShopTab(tab) {
+            const avatarTab = document.getElementById('shop-tab-avatar');
+            const titleTab = document.getElementById('shop-tab-title');
+            const avatarPane = document.getElementById('shop-pane-avatar');
+            const titlePane = document.getElementById('shop-pane-title');
+            if (avatarTab && titleTab && avatarPane && titlePane) {
+                avatarTab.classList.toggle('active', tab === 'avatar');
+                titleTab.classList.toggle('active', tab === 'title');
+                avatarPane.classList.toggle('hidden', tab !== 'avatar');
+                titlePane.classList.toggle('hidden', tab !== 'title');
+            }
+        }
+
         function updateShopUI() {
             // 현재 리프 업데이트
             const leafCount = currentProfile?.leaf_balance ?? 50;
-            document.getElementById('shop-my-leaves').innerText = leafCount;
+            const shopLeaves = document.getElementById('shop-my-leaves');
+            if (shopLeaves) shopLeaves.innerText = leafCount;
 
             // 이미 구매한 아이템 체크 (로컬 스토리지 활용)
             const ownedItems = JSON.parse(localStorage.getItem('plantwiki_owned_items') || '[]');
             
-            document.querySelectorAll('.shop-item-card button').forEach(btn => {
+            document.querySelectorAll('.shop-item-card button, .shop-title-card button').forEach(btn => {
                 const onclickAttr = btn.getAttribute('onclick');
                 if (onclickAttr) {
                     const itemIdMatch = onclickAttr.match(/'([^']+)'/);
                     if (itemIdMatch && ownedItems.includes(itemIdMatch[1])) {
-                        btn.innerText = '보유함';
-                        btn.classList.add('owned');
+                        btn.innerText = '착용중';
+                        btn.classList.add('opacity-50');
                         btn.disabled = true;
-                        btn.removeAttribute('onclick');
                     }
                 }
             });
+        }
+
+        async function buyTitle(titleId, price, titleName) {
+            let leafCount = currentProfile?.leaf_balance ?? 50;
+            if (leafCount < price) {
+                showToast('리프가 부족합니다! 🍃 더 모아주세요.', 'error');
+                return;
+            }
+
+            try {
+                const token = getAuthToken();
+                if (!token) throw new Error('로그인이 필요합니다.');
+
+                const res = await fetch('/api/shop/buy', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        ...authHeaders()
+                    },
+                    body: JSON.stringify({ item_id: titleId, price: price, title: titleName, item_type: 'title' })
+                });
+
+                if (!res.ok) {
+                    const data = await res.json();
+                    throw new Error(data.detail || '칭호 구매 실패');
+                }
+
+                const data = await res.json();
+                currentProfile = data.profile;
+                if (!currentProfile.title) currentProfile.title = titleName;
+
+                let ownedItems = JSON.parse(localStorage.getItem('plantwiki_owned_items') || '[]');
+                if (!ownedItems.includes(titleId)) {
+                    ownedItems.push(titleId);
+                    localStorage.setItem('plantwiki_owned_items', JSON.stringify(ownedItems));
+                }
+
+                showToast(`[${titleName}] 칭호 획득 및 착용 완료! 🎉`, 'success');
+                updateShopUI();
+                updateProfileUI(currentProfile);
+            } catch (err) {
+                console.error('칭호 구매 에러:', err);
+                showToast(err.message, 'error');
+            }
         }
 
         async function buyItem(itemId, price, emoji) {
@@ -521,10 +582,22 @@
                 });
                 const data = await res.json();
                 if (data.status === 'success') {
-                    showToast(data.message, 'success');
+                    currentProfile = data.profile;
+                    const streak = currentProfile?.streak_count ?? 1;
+
+                    // 뤼튼 추천 마일스톤 출석 축하 문구
+                    if (streak === 3) {
+                        showToast('벌써 3일째! 작은 새싹처럼 자라나는 너의 꾸준함, 정말 멋져요! 🌱✨', 'success');
+                    } else if (streak === 7) {
+                        showToast('일주일 연속 출석! 푸릇푸릇한 우리 식집사, 오늘도 꽃길만 걷자구요! 🌿🌸', 'success');
+                    } else if (streak === 30) {
+                        showToast('한 달 동안 변함없는 사랑, 우리 식물들이 반짝반짝 빛나요! 🌟🌵 최고예요! 💚', 'success');
+                    } else {
+                        showToast(data.message, 'success');
+                    }
+
                     // 리프 획득 팝업 표시
                     showLeafPopup(data.reward, 'daily_checkin');
-                    currentProfile = data.profile;
                     updateProfileUI(currentProfile);
                     await loadLeafHistory();
                 } else if (data.status === 'already_checked_in') {
@@ -1629,8 +1702,25 @@
             }
         }
         
+        // 뤼튼 추천 다정한 물주기 응원 문구 5선
+        const WARM_WATERING_QUOTES = [
+            "우리 초록 친구가 목말라해요. 사랑의 물 한 방울 어때요? 💧🌿",
+            "물이 가득 찬 뿌리, 싱그러운 웃음이 쑥쑥 자라나요! 🌱😊",
+            "식물도 사람도 촉촉하게! 오늘도 물 주기 타임이에요 💚💦",
+            "초록별에게 사랑을 전하는 시간! 물주기 잊지 말아요 🌟🌵",
+            "조금의 관심으로 큰 행복, 식집사님의 따뜻한 손길을 기다려요! 🤗🌿"
+        ];
+
+        function renderWarmWateringQuote() {
+            const el = document.getElementById('watering-warm-quote-text');
+            if (!el) return;
+            const rand = WARM_WATERING_QUOTES[Math.floor(Math.random() * WARM_WATERING_QUOTES.length)];
+            el.innerText = rand;
+        }
+
         // 물주기 카드 로드
         async function loadWateringCards() {
+            renderWarmWateringQuote();
             const list = document.getElementById('watering-cards-list');
             const empty = document.getElementById('watering-empty');
             
