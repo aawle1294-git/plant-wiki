@@ -199,10 +199,24 @@
                 // URL 정리
                 history.replaceState(null, null, window.location.pathname);
                 showToast('Google 로그인 처리 중... 🌿', 'info');
-            } else if (fullUrl.includes('access_token') || fullUrl.includes('error')) {
-                // 토큰이 URL에 있긴 한데 파싱 실패한 경우
-                console.warn('[OAuth Debug] URL contains token-like params but parsing failed');
-                console.warn('[OAuth Debug] Full URL:', fullUrl);
+            } else {
+                // OAuth 실패 또는 오류 파라미터 확인
+                const searchParams = new URLSearchParams(window.location.search);
+                const hashParams = window.location.hash ? new URLSearchParams(window.location.hash.substring(1)) : null;
+                const errorDesc = searchParams.get('error_description') || (hashParams ? hashParams.get('error_description') : null);
+                const errorType = searchParams.get('error') || (hashParams ? hashParams.get('error') : null);
+
+                if (errorDesc || errorType) {
+                    console.error('[OAuth Debug] OAuth error received:', errorType, errorDesc);
+                    history.replaceState(null, null, window.location.pathname);
+                    if (errorDesc && errorDesc.includes('Unable to exchange external code')) {
+                        showToast('Google 로그인 실패: Supabase의 Client Secret(보안 비밀번호) 또는 Callback URL 설정을 확인해주세요. 🔒', 'error');
+                    } else {
+                        showToast(`Google 로그인 오류: ${decodeURIComponent(errorDesc || errorType || '인증 실패')}`, 'error');
+                    }
+                } else if (fullUrl.includes('access_token')) {
+                    console.warn('[OAuth Debug] URL contains token-like params but parsing failed');
+                }
             }
         }
 
