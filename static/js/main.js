@@ -816,10 +816,22 @@
         function getActiveQuery() {
             const heroInput = document.getElementById('plant-input');
             const topbarInput = document.getElementById('topbar-input');
-            if (!document.body.classList.contains('mode-results') && heroInput) {
+
+            // 포커스된 입력창의 내용 우선
+            if (document.activeElement === topbarInput && topbarInput?.value.trim()) {
+                return topbarInput.value.trim();
+            }
+            if (document.activeElement === heroInput && heroInput?.value.trim()) {
                 return heroInput.value.trim();
             }
-            return topbarInput ? topbarInput.value.trim() : '';
+
+            // 대시보드 화면이거나 결과 모드일 때는 탑바 검색창(topbar-input) 우선
+            if (currentView === 'dashboard' || document.body.classList.contains('mode-results')) {
+                return (topbarInput?.value.trim()) || (heroInput?.value.trim()) || '';
+            }
+
+            // 홈 화면 기본 상태일 때는 heroInput 우선, 없으면 topbarInput
+            return (heroInput?.value.trim()) || (topbarInput?.value.trim()) || '';
         }
 
         function quickSearch(name) {
@@ -899,6 +911,14 @@
         async function performSearch(plantName, forceRefresh = false) {
             const seq = ++searchSeq;
             currentPlantName = plantName;
+
+            // 대시보드 등 다른 뷰에서 검색한 경우 홈/결과 뷰로 즉시 전환
+            if (currentView !== 'home') {
+                currentView = 'home';
+                updateNavActiveState();
+                updateViewVisibility();
+            }
+
             const heroInput = document.getElementById('plant-input');
             const topbarInput = document.getElementById('topbar-input');
             if (heroInput) heroInput.value = plantName;
