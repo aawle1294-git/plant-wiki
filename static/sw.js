@@ -6,7 +6,7 @@
  *  - API 요청(/api/*): Network First → 캐시 폴백(마지막 검색 결과 재사용)
  *  - 정적 자산/외부 CDN: Stale-While-Revalidate(빠른 로딩 + 백그라운드 갱신)
  * ========================================================================= */
-const CACHE_VERSION = 'v2';
+const CACHE_VERSION = 'v3';
 const CACHE_NAME = `plant-wiki-${CACHE_VERSION}`;
 
 // 설치 단계에서 미리 캐싱할 필수 앱 셸(오프라인 부팅의 최소 구성)

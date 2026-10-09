@@ -834,6 +834,48 @@
             return (heroInput?.value.trim()) || (topbarInput?.value.trim()) || '';
         }
 
+        // ============ 오늘의 추천 식물 (새로고침/방문 시마다 무작위 셔플) ============
+        const RECOMMENDED_PLANTS_POOL = [
+            { name: '몬스테라', emoji: '🪴' },
+            { name: '토마토', emoji: '🍅' },
+            { name: '로즈마리', emoji: '🌿' },
+            { name: '스투키', emoji: '🌵' },
+            { name: '해바라기', emoji: '🌻' },
+            { name: '바질', emoji: '🌱' },
+            { name: '딸기', emoji: '🍓' },
+            { name: '선인장', emoji: '🌵' },
+            { name: '상추', emoji: '🥬' },
+            { name: '유칼립투스', emoji: '🐨' },
+            { name: '라벤더', emoji: '💜' },
+            { name: '산세베리아', emoji: '🪴' },
+            { name: '고무나무', emoji: '🌳' },
+            { name: '올리브나무', emoji: '🫒' },
+            { name: '페퍼민트', emoji: '🍃' },
+            { name: '포토스', emoji: '🌿' },
+            { name: '금전수', emoji: '💰' },
+            { name: '테이블야자', emoji: '🌴' },
+            { name: '아이비', emoji: '🌱' },
+            { name: '호접란', emoji: '🌸' }
+        ];
+
+        function renderRandomRecommendPlants() {
+            const container = document.getElementById('recommended-plants-container');
+            if (!container) return;
+
+            // 무작위 셔플 후 7개 추출
+            const shuffled = [...RECOMMENDED_PLANTS_POOL].sort(() => 0.5 - Math.random());
+            const selected = shuffled.slice(0, 7);
+
+            container.innerHTML = selected.map(p => `
+                <button type="button" onclick="quickSearch('${p.name}')"
+                        class="recommend-plant-btn flex items-center gap-1.5 px-3.5 py-1.5 rounded-full border text-xs sm:text-sm font-semibold shadow-xs transition-all duration-200 hover:scale-105 active:scale-95 cursor-pointer"
+                        style="background: var(--card-bg); border-color: var(--card-border); color: var(--text);">
+                    <span class="text-sm">${p.emoji}</span>
+                    <span>${p.name}</span>
+                </button>
+            `).join('');
+        }
+
         function quickSearch(name) {
             const heroInput = document.getElementById('plant-input');
             const topbarInput = document.getElementById('topbar-input');
@@ -1451,6 +1493,7 @@
             loadStatus();
             restoreAuth();
             loadHistory();
+            renderRandomRecommendPlants();
 
             // 물주기 알림 스케줄러 시작 (로그인 상태면)
             setTimeout(() => {
