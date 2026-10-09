@@ -371,14 +371,14 @@
             }
 
             try {
-                const token = localStorage.getItem('plantwiki_token');
+                const token = getAuthToken();
                 if (!token) throw new Error('로그인이 필요합니다.');
 
                 const res = await fetch('/api/shop/buy', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${token}`
+                        ...authHeaders()
                     },
                     body: JSON.stringify({ item_id: itemId, price: price, emoji: emoji })
                 });
