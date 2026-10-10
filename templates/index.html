@@ -46,7 +46,7 @@
             document.documentElement.dataset.theme = t;
         })();
     </script>
-    <link rel="stylesheet" href="/static/css/style.css?v=20261011_1">
+    <link rel="stylesheet" href="/static/css/style.css?v=20261011_2">
 </head>
 <body>
 
@@ -781,7 +781,7 @@
                         <span aria-hidden="true">⚙️</span><span>일반 설정</span>
                     </button>
                     <button type="button" class="settings-tab-btn" data-tab="history" onclick="switchSettingsTab('history')">
-                        <span aria-hidden="true">📜</span><span>나의 역사</span>
+                        <span aria-hidden="true">📜</span><span>패치노트</span>
                     </button>
                 </nav>
 
@@ -812,12 +812,12 @@
                         </div>
                     </div>
 
-                    <!-- 탭 2: 나의 역사 (패치노트: Plant!p의 역사) -->
+                    <!-- 탭 2: 패치노트 (Plant!p 업데이트 역사) -->
                     <div id="tab-history" class="settings-tab-content">
                         <div class="settings-section">
                             <p class="font-bold text-sm">
                                 📜 패치노트 — <span class="font-extrabold italic"
-                                    style="background: linear-gradient(135deg, #059669, #2dd4bf); -webkit-background-clip: text; background-clip: text; color: transparent;">Plant!p의 위대한 기록</span>
+                                    style="background: linear-gradient(135deg, #059669, #2dd4bf); -webkit-background-clip: text; background-clip: text; color: transparent;">Plant!p 버전별 업데이트 기록</span>
                             </p>
                             <div class="timeline mt-4">
                                 <div class="timeline-item">
@@ -858,8 +858,14 @@
                                 <div class="timeline-item">
                                     <span class="tl-dot current" style="background: #059669">🤖</span>
                                     <div class="tl-body">
-                                        <p class="tl-version">[Beta 2.4] <b>"AI 연합과 감성 스마트 식집사"</b> <span class="tl-tag current">Current</span></p>
-                                        <p class="tl-desc">Gemini(10종 식물 DB) + ChatGPT(D-Day & 색상 계산) + 뤼튼(출석 축하 및 칭호 10선)의 최초 멀티 AI 협업! 메인 화면 새로고침 무작위 추천 칩과 칭호 상점이 추가된 역대급 편의성 업데이트.</p>
+                                        <p class="tl-version">[Beta 2.4] <b>"멀티 AI 연합과 감성 스마트 식집사"</b> <span class="tl-tag current">Current</span></p>
+                                        <p class="tl-desc">
+                                            <b>🤖 최초의 멀티 AI 협업 릴리즈:</b><br>
+                                            • <b>Google Gemini</b>: 10종 인기 식물 데이터셋 & 상식 찬/반 분석<br>
+                                            • <b>OpenAI ChatGPT</b>: D-Day 및 3색 긴급도 정밀 계산 모듈<br>
+                                            • <b>뤼튼</b>: 연속 출석 축하 팝업, 물주기 다정한 응원 5선, 칭호 10선<br>
+                                            • <b>메인 개편</b>: 새로고침 무작위 추천 칩 & 상점 칭호 착용 시스템 탑재
+                                        </p>
                                     </div>
                                 </div>
                             </div>
