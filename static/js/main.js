@@ -909,26 +909,22 @@
 
         // ============ 오늘의 추천 식물 (새로고침/방문 시마다 무작위 셔플) ============
         const RECOMMENDED_PLANTS_POOL = [
+            { name: '스킨답서스', emoji: '🌿' },
             { name: '몬스테라', emoji: '🪴' },
+            { name: '스투키', emoji: '🌵' },
+            { name: '산세베리아', emoji: '🐍' },
+            { name: '금전수', emoji: '🪙' },
+            { name: '테이블야자', emoji: '🌴' },
+            { name: '스파티필름', emoji: '🕊️' },
+            { name: '인도고무나무', emoji: '🌳' },
+            { name: '홍콩야자', emoji: '🌂' },
+            { name: '싱고니움', emoji: '💚' },
             { name: '토마토', emoji: '🍅' },
             { name: '로즈마리', emoji: '🌿' },
-            { name: '스투키', emoji: '🌵' },
             { name: '해바라기', emoji: '🌻' },
             { name: '바질', emoji: '🌱' },
             { name: '딸기', emoji: '🍓' },
-            { name: '선인장', emoji: '🌵' },
-            { name: '상추', emoji: '🥬' },
-            { name: '유칼립투스', emoji: '🐨' },
-            { name: '라벤더', emoji: '💜' },
-            { name: '산세베리아', emoji: '🪴' },
-            { name: '고무나무', emoji: '🌳' },
-            { name: '올리브나무', emoji: '🫒' },
-            { name: '페퍼민트', emoji: '🍃' },
-            { name: '포토스', emoji: '🌿' },
-            { name: '금전수', emoji: '💰' },
-            { name: '테이블야자', emoji: '🌴' },
-            { name: '아이비', emoji: '🌱' },
-            { name: '호접란', emoji: '🌸' }
+            { name: '라벤더', emoji: '💜' }
         ];
 
         function renderRandomRecommendPlants() {
@@ -1718,6 +1714,51 @@
             el.innerText = rand;
         }
 
+        /**
+         * 식물의 다음 물 주는 날짜, D-Day, 긴급도 색상 코드를 반환합니다. (ChatGPT AI 협업 모듈)
+         * @param {number} intervalDays - 물 주기 간격(일수)
+         * @param {string} lastWateredDate - 마지막으로 물을 준 날짜(YYYY-MM-DD)
+         * @returns {{ nextWateringDate: string, dDay: string, colorCode: string, daysRemaining: number, statusClass: string }}
+         */
+        function getWateringStatus(intervalDays, lastWateredDate) {
+            let interval = Number(intervalDays);
+            if (!Number.isInteger(interval) || interval <= 0) interval = 7;
+
+            let dateStr = (typeof lastWateredDate === 'string' && lastWateredDate) ? lastWateredDate.slice(0, 10) : '';
+            if (!/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
+                dateStr = new Date().toISOString().slice(0, 10);
+            }
+
+            const lastDate = new Date(`${dateStr}T00:00:00Z`);
+            const MS_PER_DAY = 24 * 60 * 60 * 1000;
+            const nextDate = new Date(lastDate.getTime() + interval * MS_PER_DAY);
+            const nextWateringDate = nextDate.toISOString().slice(0, 10);
+
+            const now = new Date();
+            const today = Date.UTC(now.getFullYear(), now.getMonth(), now.getDate());
+            const daysRemaining = Math.round((nextDate.getTime() - today) / MS_PER_DAY);
+
+            let dDay;
+            let colorCode;
+            let statusClass;
+
+            if (daysRemaining > 0) {
+                dDay = `D-${daysRemaining}`;
+                colorCode = "#22C55E"; // 초록: 여유
+                statusClass = "ok";
+            } else if (daysRemaining === 0) {
+                dDay = "D-Day";
+                colorCode = "#EAB308"; // 노랑: 오늘 물 줄 날
+                statusClass = "today";
+            } else {
+                dDay = `D+${Math.abs(daysRemaining)} 과습 주의`;
+                colorCode = "#EF4444"; // 빨강: 예정일 지남
+                statusClass = "overdue";
+            }
+
+            return { nextWateringDate, dDay, colorCode, daysRemaining, statusClass };
+        }
+
         // 물주기 카드 로드
         async function loadWateringCards() {
             renderWarmWateringQuote();
@@ -1743,23 +1784,11 @@
                 
                 empty.classList.add('hidden');
                 
-                // KST (UTC+9) 기준 오늘 날짜 계산 (백엔드와 동일하게)
-                const kstNow = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Seoul' }));
-                const today = new Date(kstNow.getFullYear(), kstNow.getMonth(), kstNow.getDate());
-                
                 const cards = res.data.map(schedule => {
                     const interval = schedule.watering_interval_days || 7;
-                    const nextWatering = new Date(schedule.next_water_date);
-                    const diffDays = Math.ceil((nextWatering - today) / (1000 * 60 * 60 * 24));
-                    
-                    let dDayClass = 'ok';
-                    let dDayText = '';
-                    if (diffDays < 0) { dDayClass = 'overdue'; dDayText = `${Math.abs(diffDays)}일 지남`; }
-                    else if (diffDays === 0) { dDayClass = 'today'; dDayText = 'D-Day!'; }
-                    else if (diffDays <= 2) { dDayClass = 'soon'; dDayText = `D-${diffDays}`; }
-                    else { dDayClass = 'ok'; dDayText = `D-${diffDays}`; }
-                    
-                    const progressPercent = Math.max(0, Math.min(100, 100 - (diffDays / interval * 100)));
+                    const lastDateStr = schedule.last_watered_at ? schedule.last_watered_at.slice(0, 10) : (schedule.created_at ? schedule.created_at.slice(0, 10) : new Date().toISOString().slice(0, 10));
+                    const status = getWateringStatus(interval, lastDateStr);
+                    const progressPercent = Math.max(0, Math.min(100, 100 - (status.daysRemaining / interval * 100)));
                     
                     return `
                     <div class="watering-card" data-plant="${esc(schedule.plant_name)}">
@@ -1767,20 +1796,22 @@
                             <div class="watering-plant-info">
                                 <span class="watering-plant-emoji">${esc(schedule.emoji) || '🌱'}</span>
                                 <div>
-                                    <div class="watering-plant-name">${esc(schedule.plant_name)}</div>
+                                    <div class="watering-plant-name font-bold">${esc(schedule.plant_name)}</div>
+                                    <div class="text-[11px] opacity-75">다음 예정일: ${status.nextWateringDate}</div>
                                 </div>
                             </div>
                             <div class="watering-d-day">
-                                <span class="d-day-value ${dDayClass}">${diffDays <= 0 ? '지남' : 'D-' + diffDays}</span>
-                                <span class="d-day-label">${dDayText}</span>
+                                <span class="d-day-badge font-extrabold px-2.5 py-1 rounded-full text-xs text-white shadow-xs" style="background-color: ${status.colorCode}">
+                                    ${status.dDay}
+                                </span>
                             </div>
                         </div>
-                        <div class="watering-progress">
-                            <div class="watering-progress-bar ${dDayClass}" style="width: ${progressPercent}%"></div>
+                        <div class="watering-progress mt-2">
+                            <div class="watering-progress-bar ${status.statusClass}" style="width: ${progressPercent}%; background-color: ${status.colorCode}"></div>
                         </div>
-                        <div class="watering-actions">
+                        <div class="watering-actions mt-3">
                             <button class="watered-btn primary" onclick="markWatered('${esc(schedule.plant_name)}')">
-                                ${diffDays <= 0 ? '✅ 물 줬어요!' : '💧 물 줬어요!'}
+                                ${status.daysRemaining <= 0 ? '✅ 물 줬어요!' : '💧 물 줬어요!'}
                             </button>
                             <button class="watered-btn secondary" onclick="viewHistoryPlant('${esc(schedule.plant_name)}')">상세 보기</button>
                         </div>
