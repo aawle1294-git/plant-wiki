@@ -114,6 +114,7 @@ from app.services.memory import MEMORY_HISTORY, MEMORY_PROFILES, MEMORY_LEAF_TX,
 from app.services.profile import (
     ensure_profile as _ensure_profile,
     update_profile as _update_profile,
+    sync_profile as _sync_profile,
     add_leaf_transaction as _add_leaf_transaction,
     do_streak_checkin as _do_streak_checkin
 )
@@ -1576,6 +1577,13 @@ async def update_my_profile(payload: ProfileUpdateRequest, request: Request):
 
     profile = _update_profile(user["token"], user["id"], updates)
     return {"status": "success", "message": "프로필이 수정되었습니다.", "data": profile}
+
+@app.post("/api/profile/sync")
+async def sync_my_profile(payload: ProfileSyncRequest, request: Request):
+    user = _get_current_user_or_fallback(request)
+    client_dict = payload.model_dump(exclude_unset=True)
+    profile = _sync_profile(user["token"], user["id"], client_dict)
+    return {"status": "success", "message": "계정 데이터가 안전하게 동기화되었습니다.", "data": profile}
 
 @app.post("/api/streak/checkin")
 async def post_streak_checkin(request: Request):

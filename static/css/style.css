@@ -400,18 +400,20 @@
         .btn-outline:hover { background: #10b981; color: #fff; box-shadow: 0 4px 14px rgba(16, 185, 129, 0.4); transform: translateY(-1px); }
         .btn-outline:active { transform: scale(0.96); }
 
-        /* ============ 토스트 알림 ============ */
+        /* ============ 토스트 알림 (하단 네비게이션 바 위로 표시) ============ */
         #toast-container {
             position: fixed;
-            bottom: 26px;
+            bottom: calc(86px + env(safe-area-inset-bottom, 0px));
             left: 50%;
             transform: translateX(-50%);
-            z-index: 70;
+            z-index: 9999;
             display: flex;
             flex-direction: column;
             align-items: center;
             gap: 8px;
             pointer-events: none;
+            width: max-content;
+            max-width: 92vw;
         }
         .toast {
             pointer-events: auto;

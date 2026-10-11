@@ -220,19 +220,97 @@
             }
         }
 
+        // ============ 계정 정보 로컬 영구 보존 및 동기화 (초기화 및 변형 원천 차단) ============
+        const PROFILE_CACHE_KEY = 'pwiki-profile-cache';
+
+        function getStoredProfileCache() {
+            try {
+                const raw = localStorage.getItem(PROFILE_CACHE_KEY);
+                return raw ? JSON.parse(raw) : null;
+            } catch (e) {
+                return null;
+            }
+        }
+
+        function saveProfileCache(profile) {
+            if (!profile) return;
+            try {
+                const prev = getStoredProfileCache() || {};
+                const merged = { ...prev, ...profile };
+                // 리프나 연속 학습일이 비정상적으로 줄어들지 않도록 보호
+                if (prev.leaf_balance !== undefined && (merged.leaf_balance === undefined || merged.leaf_balance < prev.leaf_balance)) {
+                    merged.leaf_balance = prev.leaf_balance;
+                }
+                if (prev.streak_count !== undefined && (merged.streak_count === undefined || merged.streak_count < prev.streak_count)) {
+                    merged.streak_count = prev.streak_count;
+                }
+                // 획득한 칭호 보존
+                if (prev.title && prev.title !== '새싹' && (!merged.title || merged.title === '새싹')) {
+                    merged.title = prev.title;
+                }
+                // 커스텀 닉네임 및 아바타 보존
+                if (prev.nickname && prev.nickname !== '새싹 식집사' && (!merged.nickname || merged.nickname === '새싹 식집사')) {
+                    merged.nickname = prev.nickname;
+                }
+                if (prev.avatar_emoji && prev.avatar_emoji !== '🌱' && (!merged.avatar_emoji || merged.avatar_emoji === '🌱')) {
+                    merged.avatar_emoji = prev.avatar_emoji;
+                }
+                localStorage.setItem(PROFILE_CACHE_KEY, JSON.stringify(merged));
+            } catch (e) {}
+        }
+
         async function fetchProfile() {
             if (!isLoggedIn()) return;
+            // 1. 기기 로컬에 저장된 계정 정보가 있다면 즉시 복원 (화면 깜빡임/0초 복원)
+            const cached = getStoredProfileCache();
+            if (cached) {
+                currentProfile = cached;
+                updateProfileUI(cached);
+            }
+
             try {
                 const res = await fetch('/api/profile/me', { headers: authHeaders() });
                 if (res.ok) {
                     const data = await res.json();
                     if (data.status === 'success') {
-                        currentProfile = data.data;
+                        let serverProfile = data.data;
+
+                        // 2. 서버가 재배포되거나 초기화된 상태(기본 리프 50 등)이고, 로컬에 더 많은 정보가 있다면 자동 복구 동기화
+                        if (cached && (
+                            (cached.leaf_balance && cached.leaf_balance > (serverProfile.leaf_balance || 0)) ||
+                            (cached.streak_count && cached.streak_count > (serverProfile.streak_count || 1)) ||
+                            (cached.title && cached.title !== '새싹' && serverProfile.title === '새싹') ||
+                            (cached.nickname && cached.nickname !== '새싹 식집사' && serverProfile.nickname === '새싹 식집사') ||
+                            (cached.avatar_emoji && cached.avatar_emoji !== '🌱' && serverProfile.avatar_emoji === '🌱')
+                        )) {
+                            try {
+                                const syncRes = await fetch('/api/profile/sync', {
+                                    method: 'POST',
+                                    headers: { ...authHeaders(), 'Content-Type': 'application/json' },
+                                    body: JSON.stringify(cached)
+                                });
+                                if (syncRes.ok) {
+                                    const syncData = await syncRes.json();
+                                    if (syncData.status === 'success') {
+                                        serverProfile = syncData.data;
+                                    }
+                                }
+                            } catch (syncErr) {
+                                console.warn('Auto restore sync error:', syncErr);
+                            }
+                        }
+
+                        currentProfile = serverProfile;
+                        saveProfileCache(currentProfile);
                         updateProfileUI(currentProfile);
                     }
                 }
             } catch (err) {
                 console.warn('Profile fetch error:', err);
+                if (cached) {
+                    currentProfile = cached;
+                    updateProfileUI(cached);
+                }
             }
         }
 
@@ -408,6 +486,7 @@
                 const data = await res.json();
                 currentProfile = data.profile;
                 if (!currentProfile.title) currentProfile.title = titleName;
+                saveProfileCache(currentProfile);
 
                 let ownedItems = JSON.parse(localStorage.getItem('plantwiki_owned_items') || '[]');
                 if (!ownedItems.includes(titleId)) {
@@ -451,8 +530,9 @@
 
                 const data = await res.json();
                 
-                // 구매 성공 후 프로필 업데이트
+                // 구매 성공 후 프로필 업데이트 및 영구 보존
                 currentProfile = data.profile;
+                saveProfileCache(currentProfile);
                 
                 // 보유 아이템 등록
                 let ownedItems = JSON.parse(localStorage.getItem('plantwiki_owned_items') || '[]');
@@ -492,6 +572,7 @@
                 if (res.ok) {
                     const data = await res.json();
                     currentProfile = data.data;
+                    saveProfileCache(currentProfile);
                     updateProfileUI(currentProfile);
                     toggleAvatarPicker();
                     showToast(`아바타가 ${emoji}(으)로 변경되었습니다! 🌿`, 'success');
@@ -517,6 +598,7 @@
                 if (res.ok) {
                     const data = await res.json();
                     currentProfile = data.data;
+                    saveProfileCache(currentProfile);
                     updateProfileUI(currentProfile);
                     showToast(`닉네임이 '${newNick}'(으)로 저장되었습니다! ✨`, 'success');
                 } else {
@@ -583,6 +665,7 @@
                 const data = await res.json();
                 if (data.status === 'success') {
                     currentProfile = data.profile;
+                    saveProfileCache(currentProfile);
                     const streak = currentProfile?.streak_count ?? 1;
 
                     // 뤼튼 추천 마일스톤 출석 축하 문구
@@ -717,24 +800,36 @@
 
         async function restoreAuth() {
             handleOAuthHash();
-            if (!getAuthToken()) return;
+            const token = getAuthToken();
+            if (!token) return;
+
+            // 로컬에 저장된 이메일이 있다면 즉시 UI를 로그인 상태로 세팅 (화면 깜빡임 및 초기화 방지)
+            const cachedEmail = localStorage.getItem(AUTH_EMAIL_KEY);
+            if (cachedEmail) {
+                setAuthUI(cachedEmail);
+            }
+
             try {
                 const res = await fetch('/api/auth/me', { headers: authHeaders() });
-                if (!res.ok) {
+                if (res.status === 401 || res.status === 403) {
                     const err = await res.json().catch(() => ({ detail: '세션이 만료되었습니다.' }));
                     localStorage.removeItem(AUTH_TOKEN_KEY);
                     localStorage.removeItem(AUTH_EMAIL_KEY);
+                    localStorage.removeItem(PROFILE_CACHE_KEY);
                     setAuthUI(null);
                     showToast(`로그인 만료: ${err.detail}`, 'error');
                     return;
                 }
-                const body = await res.json();
-                setAuthUI(body.user.email);
+                if (res.ok) {
+                    const body = await res.json();
+                    if (body && body.user && body.user.email) {
+                        localStorage.setItem(AUTH_EMAIL_KEY, body.user.email);
+                        setAuthUI(body.user.email);
+                    }
+                }
             } catch (e) {
-                localStorage.removeItem(AUTH_TOKEN_KEY);
-                localStorage.removeItem(AUTH_EMAIL_KEY);
-                setAuthUI(null);
-                showToast('연결 오류로 로그인 상태를 복구할 수 없습니다.', 'error');
+                // 일시적인 네트워크 오류나 서버 재시작 시에는 토큰을 절대 삭제하지 않고 유지!
+                console.warn('Network issue during restoreAuth, keeping local session:', e);
             }
         }
 

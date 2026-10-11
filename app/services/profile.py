@@ -21,6 +21,7 @@ def ensure_profile(token: str, user_id: str, email: str = "") -> Dict[str, Any]:
                 "email": email,
                 "nickname": "새싹 식집사",
                 "avatar_emoji": "🌱",
+                "title": "새싹",
                 "leaf_balance": 50,
                 "streak_count": 1,
                 "last_checkin_date": None,
@@ -50,6 +51,7 @@ def ensure_profile(token: str, user_id: str, email: str = "") -> Dict[str, Any]:
             "email": email or "demo@plantwiki.local",
             "nickname": "새싹 식집사",
             "avatar_emoji": "🌱",
+            "title": "새싹",
             "leaf_balance": 50,
             "streak_count": 1,
             "last_checkin_date": None,
@@ -82,6 +84,58 @@ def update_profile(token: str, user_id: str, updates: Dict[str, Any]) -> Dict[st
     prof = ensure_profile(token, user_id)
     prof.update(updates)
     _save_memory()
+    return prof
+
+
+def sync_profile(token: str, user_id: str, client_data: Dict[str, Any]) -> Dict[str, Any]:
+    """클라이언트(localStorage)와 서버 데이터를 안전하게 병합하여 데이터 초기화 및 유실을 원천 차단"""
+    prof = ensure_profile(token, user_id)
+    updates = {}
+    
+    # 1. 리프 잔액: 둘 중 더 큰 값 보존
+    client_leaves = client_data.get("leaf_balance")
+    if client_leaves is not None:
+        try:
+            cl_int = int(client_leaves)
+            cur_bal = int(prof.get("leaf_balance") or 0)
+            if cl_int > cur_bal:
+                updates["leaf_balance"] = cl_int
+        except Exception:
+            pass
+
+    # 2. 연속 출석일: 둘 중 더 큰 값 보존
+    client_streak = client_data.get("streak_count")
+    if client_streak is not None:
+        try:
+            cs_int = int(client_streak)
+            cur_st = int(prof.get("streak_count") or 1)
+            if cs_int > cur_st:
+                updates["streak_count"] = cs_int
+        except Exception:
+            pass
+
+    # 3. 닉네임: 사용자가 설정한 값 보존
+    client_nick = client_data.get("nickname")
+    if client_nick and str(client_nick).strip() and client_nick != "새싹 식집사":
+        updates["nickname"] = str(client_nick).strip()
+
+    # 4. 아바타: 사용자가 변경한 이모지 보존
+    client_avatar = client_data.get("avatar_emoji")
+    if client_avatar and str(client_avatar).strip() and client_avatar != "🌱":
+        updates["avatar_emoji"] = str(client_avatar).strip()
+
+    # 5. 칭호: 획득한 칭호 보존
+    client_title = client_data.get("title")
+    if client_title and str(client_title).strip() and client_title != "새싹":
+        updates["title"] = str(client_title).strip()
+
+    # 6. 최근 출석일 보존
+    client_checkin = client_data.get("last_checkin_date")
+    if client_checkin and not prof.get("last_checkin_date"):
+        updates["last_checkin_date"] = client_checkin
+
+    if updates:
+        prof = update_profile(token, user_id, updates)
     return prof
 
 

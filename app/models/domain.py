@@ -14,6 +14,14 @@ class ProfileUpdateRequest(BaseModel):
     avatar_emoji: Optional[str] = None
     title: Optional[str] = None
 
+class ProfileSyncRequest(BaseModel):
+    nickname: Optional[str] = None
+    avatar_emoji: Optional[str] = None
+    title: Optional[str] = None
+    leaf_balance: Optional[int] = None
+    streak_count: Optional[int] = None
+    last_checkin_date: Optional[str] = None
+
 class BuyItemRequest(BaseModel):
     item_id: str
     price: int
