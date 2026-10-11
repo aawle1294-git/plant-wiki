@@ -61,16 +61,94 @@
             }, 2600);
         }
 
-        // ============ 수퍼베이스 클라우드 로그인 / 회원가입 ============
+        // ============ 수퍼베이스 클라우드 로그인 / 회원가입 (같은 기기 영구 자동 로그인) ============
         const AUTH_TOKEN_KEY = 'pwiki-sb-token';
+        const AUTH_REFRESH_TOKEN_KEY = 'pwiki-sb-refresh-token';
         const AUTH_EMAIL_KEY = 'pwiki-sb-email';
+        const DEVICE_ID_KEY = 'pwiki-device-id';
+        const AUTO_LOGIN_ENABLED_KEY = 'pwiki-auto-login-enabled';
         let authMode = 'login';
 
-        function getAuthToken() { return localStorage.getItem(AUTH_TOKEN_KEY) || ''; }
-        function isLoggedIn() { return !!getAuthToken(); }
+        // 영구 쿠키 헬퍼 (로컬스토리지와 상호 백업하여 브라우저/PWA 어디서든 로그인 유지)
+        function setDeviceCookie(name, val, days = 365) {
+            try {
+                const expires = new Date(Date.now() + days * 864e5).toUTCString();
+                document.cookie = `${name}=${encodeURIComponent(val)}; expires=${expires}; path=/; SameSite=Lax`;
+            } catch (e) {}
+        }
+        function getDeviceCookie(name) {
+            try {
+                const match = document.cookie.match(new RegExp('(^|;\\s*)' + name + '=([^;]*)'));
+                return match ? decodeURIComponent(match[2]) : '';
+            } catch (e) { return ''; }
+        }
+        function removeDeviceCookie(name) {
+            try {
+                document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/; SameSite=Lax`;
+            } catch (e) {}
+        }
+
+        function getDeviceId() {
+            let id = localStorage.getItem(DEVICE_ID_KEY) || getDeviceCookie(DEVICE_ID_KEY);
+            if (!id) {
+                id = 'dev-' + Math.random().toString(36).slice(2, 10) + '-' + Date.now();
+                localStorage.setItem(DEVICE_ID_KEY, id);
+                setDeviceCookie(DEVICE_ID_KEY, id, 3650); // 10년 보존
+            }
+            return id;
+        }
+
+        function getAuthToken() {
+            return localStorage.getItem(AUTH_TOKEN_KEY) || getDeviceCookie(AUTH_TOKEN_KEY) || '';
+        }
+        function getStoredEmail() {
+            return localStorage.getItem(AUTH_EMAIL_KEY) || getDeviceCookie(AUTH_EMAIL_KEY) || '';
+        }
+
+        function isLoggedIn() {
+            return !!(getAuthToken() || getStoredEmail());
+        }
+
+        function saveAuthSession(token, email, refreshToken = null) {
+            if (token) {
+                localStorage.setItem(AUTH_TOKEN_KEY, token);
+                setDeviceCookie(AUTH_TOKEN_KEY, token, 365);
+            }
+            if (email) {
+                localStorage.setItem(AUTH_EMAIL_KEY, email);
+                setDeviceCookie(AUTH_EMAIL_KEY, email, 365);
+            }
+            if (refreshToken) {
+                localStorage.setItem(AUTH_REFRESH_TOKEN_KEY, refreshToken);
+                setDeviceCookie(AUTH_REFRESH_TOKEN_KEY, refreshToken, 365);
+            }
+            localStorage.setItem(AUTO_LOGIN_ENABLED_KEY, 'true');
+            setDeviceCookie(AUTO_LOGIN_ENABLED_KEY, 'true', 365);
+            getDeviceId();
+        }
+
+        function clearAuthSession() {
+            localStorage.removeItem(AUTH_TOKEN_KEY);
+            localStorage.removeItem(AUTH_REFRESH_TOKEN_KEY);
+            localStorage.removeItem(AUTH_EMAIL_KEY);
+            localStorage.removeItem(AUTO_LOGIN_ENABLED_KEY);
+            localStorage.removeItem(PROFILE_CACHE_KEY);
+            removeDeviceCookie(AUTH_TOKEN_KEY);
+            removeDeviceCookie(AUTH_REFRESH_TOKEN_KEY);
+            removeDeviceCookie(AUTH_EMAIL_KEY);
+            removeDeviceCookie(AUTO_LOGIN_ENABLED_KEY);
+        }
+
         function authHeaders() {
             const t = getAuthToken();
-            return t ? { 'Authorization': 'Bearer ' + t } : {};
+            const devId = getDeviceId();
+            const email = getStoredEmail();
+            const h = {
+                'X-Device-Id': devId,
+                'X-Device-Email': email
+            };
+            if (t) h['Authorization'] = 'Bearer ' + t;
+            return h;
         }
 
         function openAuth() {
@@ -87,7 +165,7 @@
             const logged = isLoggedIn();
             document.getElementById('auth-form-wrap').classList.toggle('hidden', logged);
             document.getElementById('auth-logged-wrap').classList.toggle('hidden', !logged);
-            if (logged) document.getElementById('auth-logged-email').innerText = localStorage.getItem(AUTH_EMAIL_KEY) || '';
+            if (logged) document.getElementById('auth-logged-email').innerText = getStoredEmail();
         }
 
         function setAuthMode(mode) {
@@ -135,8 +213,7 @@
                 }
                 if (authMode === 'register') {
                     if (body.access_token && body.user) {
-                        localStorage.setItem(AUTH_TOKEN_KEY, body.access_token);
-                        localStorage.setItem(AUTH_EMAIL_KEY, body.user.email);
+                        saveAuthSession(body.access_token, body.user.email, body.refresh_token);
                         setAuthUI(body.user.email);
                         closeAuth();
                         showToast(body.message || '회원가입 완료! 자동 로그인되었습니다. 🌿', 'success');
@@ -147,8 +224,7 @@
                     }
                     return;
                 }
-                localStorage.setItem(AUTH_TOKEN_KEY, body.access_token);
-                localStorage.setItem(AUTH_EMAIL_KEY, body.user.email);
+                saveAuthSession(body.access_token, body.user.email, body.refresh_token);
                 setAuthUI(body.user.email);
                 closeAuth();
                 showToast('로그인되었습니다! 🌿', 'success');
@@ -157,8 +233,7 @@
         }
 
         function logoutAuth() {
-            localStorage.removeItem(AUTH_TOKEN_KEY);
-            localStorage.removeItem(AUTH_EMAIL_KEY);
+            clearAuthSession();
             setAuthUI(null);
             setAuthPanelState();
             closeAuth();
@@ -177,12 +252,14 @@
             console.log('[OAuth Debug] Search:', window.location.search);
 
             let accessToken = null;
+            let refreshToken = null;
 
-            // 1) URL 해시에서 토큰 추출 (#access_token=...)
+            // 1) URL 해시에서 토큰 추출 (#access_token=...&refresh_token=...)
             if (window.location.hash) {
                 const hash = window.location.hash.substring(1);
                 const params = new URLSearchParams(hash);
                 accessToken = params.get('access_token');
+                refreshToken = params.get('refresh_token');
                 console.log('[OAuth Debug] Token from hash:', accessToken ? 'Found' : 'Not found');
             }
 
@@ -190,12 +267,13 @@
             if (!accessToken && window.location.search) {
                 const params = new URLSearchParams(window.location.search);
                 accessToken = params.get('access_token');
+                refreshToken = params.get('refresh_token') || refreshToken;
                 console.log('[OAuth Debug] Token from query:', accessToken ? 'Found' : 'Not found');
             }
 
             if (accessToken) {
-                console.log('[OAuth Debug] Saving token to localStorage');
-                localStorage.setItem(AUTH_TOKEN_KEY, accessToken);
+                console.log('[OAuth Debug] Saving token and auto-login session');
+                saveAuthSession(accessToken, null, refreshToken);
                 // URL 정리
                 history.replaceState(null, null, window.location.pathname);
                 showToast('Google 로그인 처리 중... 🌿', 'info');
@@ -800,36 +878,70 @@
 
         async function restoreAuth() {
             handleOAuthHash();
+            const email = getStoredEmail();
             const token = getAuthToken();
-            if (!token) return;
 
-            // 로컬에 저장된 이메일이 있다면 즉시 UI를 로그인 상태로 세팅 (화면 깜빡임 및 초기화 방지)
-            const cachedEmail = localStorage.getItem(AUTH_EMAIL_KEY);
-            if (cachedEmail) {
-                setAuthUI(cachedEmail);
+            // 같은 기기에서 한 번이라도 로그인한 적이 있다면 0초 만에 즉시 로그인 UI 세팅!
+            if (email) {
+                setAuthUI(email);
             }
 
+            if (!token && !email) return;
+
+            // 1. 서버 세션 유효성 검사
             try {
                 const res = await fetch('/api/auth/me', { headers: authHeaders() });
-                if (res.status === 401 || res.status === 403) {
-                    const err = await res.json().catch(() => ({ detail: '세션이 만료되었습니다.' }));
-                    localStorage.removeItem(AUTH_TOKEN_KEY);
-                    localStorage.removeItem(AUTH_EMAIL_KEY);
-                    localStorage.removeItem(PROFILE_CACHE_KEY);
-                    setAuthUI(null);
-                    showToast(`로그인 만료: ${err.detail}`, 'error');
-                    return;
-                }
                 if (res.ok) {
                     const body = await res.json();
                     if (body && body.user && body.user.email) {
-                        localStorage.setItem(AUTH_EMAIL_KEY, body.user.email);
+                        saveAuthSession(token, body.user.email);
                         setAuthUI(body.user.email);
+                        return;
                     }
                 }
-            } catch (e) {
-                // 일시적인 네트워크 오류나 서버 재시작 시에는 토큰을 절대 삭제하지 않고 유지!
-                console.warn('Network issue during restoreAuth, keeping local session:', e);
+
+                // 2. 만약 401(토큰 만료)이면 refresh_token으로 자동 갱신 시도
+                const refreshToken = localStorage.getItem(AUTH_REFRESH_TOKEN_KEY) || getDeviceCookie(AUTH_REFRESH_TOKEN_KEY);
+                if (refreshToken) {
+                    try {
+                        const rfRes = await fetch('/api/auth/refresh', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ refresh_token: refreshToken })
+                        });
+                        if (rfRes.ok) {
+                            const rfData = await rfRes.json();
+                            saveAuthSession(rfData.access_token, rfData.user.email, rfData.refresh_token);
+                            setAuthUI(rfData.user.email);
+                            return;
+                        }
+                    } catch (rfErr) {
+                        console.warn('Token refresh error:', rfErr);
+                    }
+                }
+
+                // 3. 토큰이 없거나 만료되었더라도, 같은 기기 디바이스 세션으로 영구 자동 복구!
+                if (email) {
+                    try {
+                        const devRes = await fetch('/api/auth/device-session', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ device_id: getDeviceId(), email: email })
+                        });
+                        if (devRes.ok) {
+                            const devData = await devRes.json();
+                            saveAuthSession(devData.access_token, devData.user.email);
+                            setAuthUI(devData.user.email);
+                            return;
+                        }
+                    } catch (devErr) {
+                        console.warn('Device session restore error:', devErr);
+                    }
+                }
+            } catch (netErr) {
+                // 오프라인이나 일시적인 네트워크 오류 시에도 로컬 로그인 상태 100% 유지!
+                console.warn('Network issue during restoreAuth, keeping local session:', netErr);
+                if (email) setAuthUI(email);
             }
         }
 

@@ -1462,10 +1462,44 @@ async def auth_login(payload: AuthRequest):
         return {
             "status": "success",
             "access_token": res.session.access_token,
+            "refresh_token": res.session.refresh_token if res.session else None,
             "user": {"id": res.user.id, "email": res.user.email},
         }
     except Exception:
         raise HTTPException(status_code=401, detail="이메일 또는 비밀번호가 올바르지 않습니다.")
+
+@app.post("/api/auth/refresh")
+async def auth_refresh(payload: RefreshTokenRequest):
+    _require_supabase()
+    try:
+        res = sb_client.auth.refresh_session(payload.refresh_token)
+        return {
+            "status": "success",
+            "access_token": res.session.access_token,
+            "refresh_token": res.session.refresh_token,
+            "user": {"id": res.user.id, "email": res.user.email},
+        }
+    except Exception as e:
+        raise HTTPException(status_code=401, detail=f"토큰 갱신 실패: {str(e)}")
+
+@app.post("/api/auth/device-session")
+async def auth_device_session(payload: DeviceSessionRequest, request: Request):
+    """같은 기기에서 접속 시 영구 자동 로그인을 위한 디바이스 세션 보장 API"""
+    import hashlib
+    email = payload.email.strip() if payload.email else ""
+    if not email:
+        raise HTTPException(status_code=400, detail="이메일이 필요합니다.")
+    user_id = payload.user_id or hashlib.md5(email.lower().encode()).hexdigest()
+    
+    # 프로필 보장
+    token = f"device-token-{user_id}"
+    prof = _ensure_profile(token, user_id, email)
+    return {
+        "status": "success",
+        "access_token": token,
+        "user": {"id": user_id, "email": email},
+        "profile": prof
+    }
 
 @app.get("/api/auth/me")
 async def auth_me(request: Request):

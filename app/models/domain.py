@@ -48,3 +48,11 @@ class SaveToHistoryRequest(BaseModel):
     true_percent: int = 50
     false_percent: int = 50
 
+class RefreshTokenRequest(BaseModel):
+    refresh_token: str
+
+class DeviceSessionRequest(BaseModel):
+    device_id: str
+    email: Optional[str] = None
+    user_id: Optional[str] = None
+
