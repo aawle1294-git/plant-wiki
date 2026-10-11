@@ -170,3 +170,26 @@ create policy "plant_watering_schedules: update own" on public.plant_watering_sc
 
 create policy "plant_watering_schedules: delete own" on public.plant_watering_schedules
   for delete using (auth.uid() = user_id);
+-- ===================== 설문조사 응답 테이블 =====================
+create table if not exists public.survey_responses (
+  id uuid primary key default gen_random_uuid(),
+  source text default 'inline',          -- 'popup' | 'inline'
+  reuse text,                             -- 'yes' | 'no'
+  speed integer,                          -- 1~5
+  accuracy integer,                       -- 1~5
+  aihelp text,                            -- 'yes' | 'same' | 'no'
+  differentiators text,                   -- JSON 배열 문자열
+  comment text,
+  email text,
+  ip_hint text,
+  submitted_at timestamptz not null default now()
+);
+
+-- 설문은 누구나 삽입 가능, 조회는 서비스 키로만
+alter table public.survey_responses enable row level security;
+
+create policy  survey_responses: anyone can insert
+  on public.survey_responses for insert with check (true);
+
+create policy survey_responses: service role can select
+  on public.survey_responses for select using (auth.role() = 'service_role');

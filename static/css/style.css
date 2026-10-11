@@ -1712,3 +1712,49 @@
                 transform: none;
             }
         }
+
+        /* ============ 설문조사 스타일 ============ */
+        .survey-q-block { margin-bottom: 18px; }
+        .survey-q-label { font-size: 0.82rem; font-weight: 700; color: var(--text); margin-bottom: 8px; }
+        .survey-btn-group { display: flex; flex-wrap: wrap; gap: 8px; }
+        .survey-yn-btn {
+            padding: 7px 14px; border-radius: 20px;
+            border: 1.5px solid var(--card-border);
+            background: var(--card-bg); color: var(--text);
+            font-size: 0.8rem; font-weight: 600; cursor: pointer;
+            transition: all 0.2s;
+        }
+        .survey-yn-btn:hover { border-color: #059669; background: var(--tile-em-bg); color: var(--tile-em-tx); }
+        .survey-yn-btn.selected {
+            background: linear-gradient(135deg, #059669, #2dd4bf);
+            color: #fff; border-color: transparent;
+            box-shadow: 0 4px 12px rgba(5,150,105,0.3);
+        }
+        .survey-stars { display: flex; gap: 6px; margin-bottom: 4px; }
+        .survey-star {
+            font-size: 1.5rem; cursor: pointer;
+            filter: grayscale(1) opacity(0.4);
+            transition: filter 0.15s, transform 0.15s;
+            user-select: none;
+        }
+        .survey-star:hover, .survey-star.filled { filter: grayscale(0) opacity(1); transform: scale(1.18); }
+        .survey-star-label { font-size: 0.72rem; color: var(--muted); min-height: 16px; }
+        .survey-check-group { display: flex; flex-direction: column; gap: 7px; }
+        .survey-check-label {
+            display: flex; align-items: center; gap: 8px;
+            font-size: 0.8rem; color: var(--text); cursor: pointer;
+            padding: 6px 10px; border-radius: 10px;
+            border: 1.5px solid var(--card-border); background: var(--card-bg);
+            transition: background 0.2s, border-color 0.2s;
+        }
+        .survey-check-label:hover { background: var(--tile-em-bg); border-color: #059669; }
+        .survey-check-label input[type="checkbox"] { accent-color: #059669; width: 15px; height: 15px; flex-shrink: 0; }
+        .survey-textarea {
+            width: 100%; border-radius: 12px;
+            border: 1.5px solid var(--card-border);
+            background: var(--card-bg); color: var(--text);
+            padding: 10px 12px; font-size: 0.82rem; resize: vertical;
+            transition: border-color 0.2s; font-family: inherit; box-sizing: border-box;
+        }
+        .survey-textarea:focus { outline: none; border-color: #059669; box-shadow: 0 0 0 3px rgba(5,150,105,0.12); }
+        .survey-textarea::placeholder { color: var(--muted); }

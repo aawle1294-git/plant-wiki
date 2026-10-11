@@ -783,6 +783,9 @@
                     <button type="button" class="settings-tab-btn" data-tab="history" onclick="switchSettingsTab('history')">
                         <span aria-hidden="true">📜</span><span>패치노트</span>
                     </button>
+                    <button type="button" class="settings-tab-btn" data-tab="survey" onclick="switchSettingsTab('survey')">
+                        <span aria-hidden="true">📋</span><span>설문조사</span>
+                    </button>
                 </nav>
 
                 <!-- 우측 컨텐츠 영역: 탭 클릭 시 이 영역만 전환 -->
@@ -889,8 +892,173 @@
                             </div>
                         </div>
                     </div>
+
+                    <!-- 탭 3: 설문조사 -->
+                    <div id="tab-survey" class="settings-tab-content">
+                        <div class="settings-section">
+                            <p class="font-bold text-sm">
+                                📋 사용자 설문조사 — <span class="font-extrabold italic"
+                                    style="background: linear-gradient(135deg, #059669, #2dd4bf); -webkit-background-clip: text; background-clip: text; color: transparent;">Plant!p vs 일반 검색, 솔직한 한마디!</span>
+                            </p>
+                            <p class="text-xs mt-1" style="color: var(--muted)">여러분의 소중한 의견이 Plant!p를 더 좋게 만들어요. 약 1분이면 충분해요! 🌿</p>
+                            <div id="survey-inline-content" class="mt-4">
+                                <!-- 설문 폼 (인라인) -->
+                                <div id="survey-inline-form">
+                                    <div class="survey-q-block">
+                                        <p class="survey-q-label">1. Plant!p를 사용한 뒤, 다시 사용할 의향이 있나요?</p>
+                                        <div class="survey-btn-group">
+                                            <button type="button" class="survey-yn-btn" data-q="reuse" data-v="yes" onclick="setSurveyYN('reuse','yes',this)">✅ 네, 또 쓸게요</button>
+                                            <button type="button" class="survey-yn-btn" data-q="reuse" data-v="no" onclick="setSurveyYN('reuse','no',this)">❌ 아니요</button>
+                                        </div>
+                                    </div>
+                                    <div class="survey-q-block">
+                                        <p class="survey-q-label">2. 검색 속도가 만족스러웠나요?</p>
+                                        <div class="survey-stars" id="survey-stars-speed">
+                                            <span class="survey-star" data-q="speed" data-v="1" onclick="setSurveyStar('speed',1)">⭐</span>
+                                            <span class="survey-star" data-q="speed" data-v="2" onclick="setSurveyStar('speed',2)">⭐</span>
+                                            <span class="survey-star" data-q="speed" data-v="3" onclick="setSurveyStar('speed',3)">⭐</span>
+                                            <span class="survey-star" data-q="speed" data-v="4" onclick="setSurveyStar('speed',4)">⭐</span>
+                                            <span class="survey-star" data-q="speed" data-v="5" onclick="setSurveyStar('speed',5)">⭐</span>
+                                        </div>
+                                        <p class="survey-star-label" id="survey-star-label-speed">선택하세요</p>
+                                    </div>
+                                    <div class="survey-q-block">
+                                        <p class="survey-q-label">3. 제공된 식물 정보가 얼마나 정확하다고 느끼셨나요?</p>
+                                        <div class="survey-stars" id="survey-stars-accuracy">
+                                            <span class="survey-star" data-q="accuracy" data-v="1" onclick="setSurveyStar('accuracy',1)">⭐</span>
+                                            <span class="survey-star" data-q="accuracy" data-v="2" onclick="setSurveyStar('accuracy',2)">⭐</span>
+                                            <span class="survey-star" data-q="accuracy" data-v="3" onclick="setSurveyStar('accuracy',3)">⭐</span>
+                                            <span class="survey-star" data-q="accuracy" data-v="4" onclick="setSurveyStar('accuracy',4)">⭐</span>
+                                            <span class="survey-star" data-q="accuracy" data-v="5" onclick="setSurveyStar('accuracy',5)">⭐</span>
+                                        </div>
+                                        <p class="survey-star-label" id="survey-star-label-accuracy">선택하세요</p>
+                                    </div>
+                                    <div class="survey-q-block">
+                                        <p class="survey-q-label">4. AI가 생성한 정보가 일반 검색(네이버/구글)보다 도움이 됐나요?</p>
+                                        <div class="survey-btn-group">
+                                            <button type="button" class="survey-yn-btn" data-q="aihelp" data-v="yes" onclick="setSurveyYN('aihelp','yes',this)">🌟 더 도움됐어요</button>
+                                            <button type="button" class="survey-yn-btn" data-q="aihelp" data-v="same" onclick="setSurveyYN('aihelp','same',this)">😐 비슷해요</button>
+                                            <button type="button" class="survey-yn-btn" data-q="aihelp" data-v="no" onclick="setSurveyYN('aihelp','no',this)">🤔 일반 검색이 더 나아요</button>
+                                        </div>
+                                    </div>
+                                    <div class="survey-q-block">
+                                        <p class="survey-q-label">5. Plant!p만의 차별화된 점 (해당되는 것 모두 선택)</p>
+                                        <div class="survey-check-group">
+                                            <label class="survey-check-label"><input type="checkbox" class="survey-check" value="ai_summary"> 🤖 AI가 요약해줘서 읽기 편했다</label>
+                                            <label class="survey-check-label"><input type="checkbox" class="survey-check" value="belief_check"> ✅ 상식 찬반 검증이 신선했다</label>
+                                            <label class="survey-check-label"><input type="checkbox" class="survey-check" value="watering"> 💧 물주기 알림이 실용적이었다</label>
+                                            <label class="survey-check-label"><input type="checkbox" class="survey-check" value="gamification"> 🍃 리프/스트릭 게이미피케이션이 재미있었다</label>
+                                            <label class="survey-check-label"><input type="checkbox" class="survey-check" value="design"> 🎨 디자인이 예뻤다</label>
+                                            <label class="survey-check-label"><input type="checkbox" class="survey-check" value="nothing"> 😶 딱히 없다</label>
+                                        </div>
+                                    </div>
+                                    <div class="survey-q-block">
+                                        <p class="survey-q-label">6. 자유롭게 의견을 남겨주세요 (선택)</p>
+                                        <textarea id="survey-comment" class="survey-textarea" placeholder="개선점이나 느낀 점을 자유롭게 적어주세요 🌱" rows="3"></textarea>
+                                    </div>
+                                    <button type="button" class="submit-btn w-full mt-2" onclick="submitSurvey('inline')" id="survey-inline-submit-btn"
+                                        style="background: linear-gradient(135deg, #059669, #0284c7);">
+                                        📬 설문 제출하기
+                                    </button>
+                                </div>
+                                <div id="survey-inline-done" class="hidden text-center py-8">
+                                    <span class="text-5xl block mb-3">🎉</span>
+                                    <p class="font-extrabold text-lg" style="color: var(--text)">소중한 의견 감사해요!</p>
+                                    <p class="text-sm mt-1" style="color: var(--muted)">Plant!p가 더 좋아지는 데 큰 힘이 됩니다. 🌿</p>
+                                    <button type="button" class="global-btn text-sm mt-4" style="color: var(--muted)" onclick="resetSurvey()">다시 응답하기</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
 </div>
+    </div>
+</div>
+
+<!-- ===================== 설문조사 팝업 모달 ===================== -->
+<div id="survey-modal" onclick="closeSurveyModalOnBackdrop(event)" style="display:none; position:fixed; inset:0; z-index:9998; background:rgba(0,0,0,0.5); backdrop-filter:blur(4px); align-items:center; justify-content:center;">
+    <div class="modal-panel" style="max-width:480px; width:92%; max-height:85vh; overflow-y:auto; border-radius:24px; padding:0; position:relative;">
+        <!-- 헤더 -->
+        <div style="padding:20px 20px 0; display:flex; align-items:center; justify-content:space-between; position:sticky; top:0; background:var(--modal-bg,#fff); z-index:1; border-radius:24px 24px 0 0;">
+            <div>
+                <h3 style="font-size:1.1rem; font-weight:800; color:var(--text)">📋 잠깐, 1분만 도와주세요! 🌿</h3>
+                <p style="font-size:0.75rem; color:var(--muted); margin-top:2px">Plant!p가 일반 검색보다 더 나은지 알려주세요</p>
+            </div>
+            <button onclick="closeSurveyModal()" class="global-btn" aria-label="설문 닫기" style="font-size:1.1rem;">✕</button>
+        </div>
+        <!-- 바디 -->
+        <div style="padding:16px 20px 20px;" id="survey-popup-body">
+            <div id="survey-popup-form">
+                <!-- Q1 -->
+                <div class="survey-q-block">
+                    <p class="survey-q-label">1. 다시 사용할 의향이 있나요?</p>
+                    <div class="survey-btn-group">
+                        <button type="button" class="survey-yn-btn" data-q="p_reuse" data-v="yes" onclick="setSurveyYN('p_reuse','yes',this)">✅ 네, 또 쓸게요</button>
+                        <button type="button" class="survey-yn-btn" data-q="p_reuse" data-v="no" onclick="setSurveyYN('p_reuse','no',this)">❌ 아니요</button>
+                    </div>
+                </div>
+                <!-- Q2 -->
+                <div class="survey-q-block">
+                    <p class="survey-q-label">2. 검색 속도 만족도 (5점)</p>
+                    <div class="survey-stars" id="survey-stars-p_speed">
+                        <span class="survey-star" onclick="setSurveyStar('p_speed',1)">⭐</span>
+                        <span class="survey-star" onclick="setSurveyStar('p_speed',2)">⭐</span>
+                        <span class="survey-star" onclick="setSurveyStar('p_speed',3)">⭐</span>
+                        <span class="survey-star" onclick="setSurveyStar('p_speed',4)">⭐</span>
+                        <span class="survey-star" onclick="setSurveyStar('p_speed',5)">⭐</span>
+                    </div>
+                    <p class="survey-star-label" id="survey-star-label-p_speed">선택하세요</p>
+                </div>
+                <!-- Q3 -->
+                <div class="survey-q-block">
+                    <p class="survey-q-label">3. 정보 정확도 평가 (5점)</p>
+                    <div class="survey-stars" id="survey-stars-p_accuracy">
+                        <span class="survey-star" onclick="setSurveyStar('p_accuracy',1)">⭐</span>
+                        <span class="survey-star" onclick="setSurveyStar('p_accuracy',2)">⭐</span>
+                        <span class="survey-star" onclick="setSurveyStar('p_accuracy',3)">⭐</span>
+                        <span class="survey-star" onclick="setSurveyStar('p_accuracy',4)">⭐</span>
+                        <span class="survey-star" onclick="setSurveyStar('p_accuracy',5)">⭐</span>
+                    </div>
+                    <p class="survey-star-label" id="survey-star-label-p_accuracy">선택하세요</p>
+                </div>
+                <!-- Q4 -->
+                <div class="survey-q-block">
+                    <p class="survey-q-label">4. AI 정보가 일반 검색보다 도움됐나요?</p>
+                    <div class="survey-btn-group">
+                        <button type="button" class="survey-yn-btn" data-q="p_aihelp" data-v="yes" onclick="setSurveyYN('p_aihelp','yes',this)">🌟 더 도움됐어요</button>
+                        <button type="button" class="survey-yn-btn" data-q="p_aihelp" data-v="same" onclick="setSurveyYN('p_aihelp','same',this)">😐 비슷해요</button>
+                        <button type="button" class="survey-yn-btn" data-q="p_aihelp" data-v="no" onclick="setSurveyYN('p_aihelp','no',this)">🤔 일반 검색이 나아요</button>
+                    </div>
+                </div>
+                <!-- Q5 -->
+                <div class="survey-q-block">
+                    <p class="survey-q-label">5. Plant!p만의 차별화된 점 (복수 선택)</p>
+                    <div class="survey-check-group">
+                        <label class="survey-check-label"><input type="checkbox" class="survey-check-popup" value="ai_summary"> 🤖 AI 요약이 편했다</label>
+                        <label class="survey-check-label"><input type="checkbox" class="survey-check-popup" value="belief_check"> ✅ 상식 찬반 검증이 신선했다</label>
+                        <label class="survey-check-label"><input type="checkbox" class="survey-check-popup" value="watering"> 💧 물주기 알림이 실용적이었다</label>
+                        <label class="survey-check-label"><input type="checkbox" class="survey-check-popup" value="gamification"> 🍃 리프/스트릭이 재미있었다</label>
+                        <label class="survey-check-label"><input type="checkbox" class="survey-check-popup" value="design"> 🎨 디자인이 예뻤다</label>
+                        <label class="survey-check-label"><input type="checkbox" class="survey-check-popup" value="nothing"> 😶 딱히 없다</label>
+                    </div>
+                </div>
+                <!-- Q6 -->
+                <div class="survey-q-block">
+                    <p class="survey-q-label">6. 한마디 남겨주세요 (선택)</p>
+                    <textarea id="survey-popup-comment" class="survey-textarea" placeholder="개선점이나 느낀 점을 자유롭게 적어주세요 🌱" rows="2"></textarea>
+                </div>
+                <div style="display:flex; gap:8px; margin-top:12px;">
+                    <button type="button" class="global-btn" style="flex:1; color:var(--muted); font-size:0.8rem;" onclick="closeSurveyModal()">나중에 할게요</button>
+                    <button type="button" class="submit-btn" style="flex:2; background:linear-gradient(135deg,#059669,#0284c7);" onclick="submitSurvey('popup')">📬 제출하기</button>
+                </div>
+            </div>
+            <div id="survey-popup-done" class="hidden text-center py-6">
+                <span class="text-5xl block mb-3">🎉</span>
+                <p class="font-extrabold text-lg" style="color:var(--text)">소중한 의견 감사해요!</p>
+                <p class="text-sm mt-1" style="color:var(--muted)">Plant!p가 더 좋아지는 데 큰 힘이 됩니다. 🌿</p>
+                <button type="button" class="submit-btn mt-4" style="background:linear-gradient(135deg,#059669,#2dd4bf);" onclick="closeSurveyModal()">닫기</button>
+            </div>
+        </div>
     </div>
 </div>
 
@@ -1065,7 +1233,7 @@
     </footer>
 
     <!-- JavaScript Client Application Logic -->
-    <script src="/static/js/main.js?v=20261011_4"></script>
+    <script src="/static/js/main.js?v=20261011_5"></script>
 
     <!-- PWA: Service Worker 등록 (오프라인 부팅 & 앱 설치 지원) -->
     <script>

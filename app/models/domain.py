@@ -56,3 +56,13 @@ class DeviceSessionRequest(BaseModel):
     email: Optional[str] = None
     user_id: Optional[str] = None
 
+class SurveySubmitRequest(BaseModel):
+    source: Optional[str] = "inline"       # "popup" or "inline"
+    reuse: Optional[str] = None            # "yes" | "no"
+    speed: Optional[int] = None            # 1~5
+    accuracy: Optional[int] = None         # 1~5
+    aihelp: Optional[str] = None           # "yes" | "same" | "no"
+    differentiators: Optional[list] = None # list of str
+    comment: Optional[str] = None
+    submitted_at: Optional[str] = None
+    email: Optional[str] = None

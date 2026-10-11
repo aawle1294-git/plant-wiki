@@ -109,6 +109,78 @@
             return !!(getAuthToken() || getStoredEmail());
         }
 
+        // ============ 크로스 도메인 SSO (plantip.onrender.com & plantwiki.kro.kr 간 실시간 세션 공유) ============
+        const SSO_HUB_ORIGIN = 'https://plantip.onrender.com';
+        let ssoHubIframe = null;
+        let ssoHubReady = false;
+
+        function initCrossDomainSSO() {
+            // 현재 도메인이 메인 허브와 다른 경우에만 허브 iframe 연결
+            if (window.location.origin === SSO_HUB_ORIGIN) return;
+
+            ssoHubIframe = document.createElement('iframe');
+            ssoHubIframe.src = `${SSO_HUB_ORIGIN}/sso-hub`;
+            ssoHubIframe.style.display = 'none';
+            ssoHubIframe.style.width = '0';
+            ssoHubIframe.style.height = '0';
+            ssoHubIframe.style.border = 'none';
+
+            window.addEventListener('message', (event) => {
+                if (event.origin !== SSO_HUB_ORIGIN) return;
+                const data = event.data;
+                if (!data || typeof data !== 'object') return;
+
+                if (data.type === 'PWIKI_SSO_HUB_READY') {
+                    ssoHubReady = true;
+                    // 현재 도메인에 로그인 세션이 없다면 허브로부터 세션 요청!
+                    if (!getAuthToken() && !getStoredEmail()) {
+                        ssoHubIframe.contentWindow.postMessage({ type: 'PWIKI_GET_SSO_SESSION' }, SSO_HUB_ORIGIN);
+                    } else {
+                        syncSessionToSSOHub();
+                    }
+                } else if (data.type === 'PWIKI_SSO_SESSION_RESULT') {
+                    const session = data.session;
+                    if (session && (session['pwiki-sb-token'] || session['pwiki-sb-email'])) {
+                        // 허브에서 세션을 성공적으로 받아왔으므로 현재 도메인에 저장!
+                        Object.entries(session).forEach(([k, v]) => {
+                            if (v) localStorage.setItem(k, v);
+                        });
+                        restoreAuth();
+                    }
+                }
+            });
+
+            document.body.appendChild(ssoHubIframe);
+        }
+
+        function syncSessionToSSOHub() {
+            if (!ssoHubIframe || !ssoHubReady) return;
+            const session = {
+                'pwiki-sb-token': getAuthToken(),
+                'pwiki-sb-refresh-token': localStorage.getItem(AUTH_REFRESH_TOKEN_KEY) || '',
+                'pwiki-sb-email': getStoredEmail(),
+                'pwiki-device-id': getDeviceId(),
+                'pwiki-auto-login-enabled': 'true',
+                'pwiki-profile-cache': localStorage.getItem(PROFILE_CACHE_KEY) || '',
+                'plantwiki_owned_items': localStorage.getItem('plantwiki_owned_items') || '[]'
+            };
+            try {
+                ssoHubIframe.contentWindow.postMessage({
+                    type: 'PWIKI_SET_SSO_SESSION',
+                    session: session
+                }, SSO_HUB_ORIGIN);
+            } catch (e) {}
+        }
+
+        function clearSSOHubSession() {
+            if (!ssoHubIframe || !ssoHubReady) return;
+            try {
+                ssoHubIframe.contentWindow.postMessage({
+                    type: 'PWIKI_CLEAR_SSO_SESSION'
+                }, SSO_HUB_ORIGIN);
+            } catch (e) {}
+        }
+
         function saveAuthSession(token, email, refreshToken = null) {
             if (token) {
                 localStorage.setItem(AUTH_TOKEN_KEY, token);
@@ -125,6 +197,7 @@
             localStorage.setItem(AUTO_LOGIN_ENABLED_KEY, 'true');
             setDeviceCookie(AUTO_LOGIN_ENABLED_KEY, 'true', 365);
             getDeviceId();
+            syncSessionToSSOHub();
         }
 
         function clearAuthSession() {
@@ -137,6 +210,7 @@
             removeDeviceCookie(AUTH_REFRESH_TOKEN_KEY);
             removeDeviceCookie(AUTH_EMAIL_KEY);
             removeDeviceCookie(AUTO_LOGIN_ENABLED_KEY);
+            clearSSOHubSession();
         }
 
         function authHeaders() {
@@ -1382,6 +1456,8 @@
             void card.offsetWidth;
             card.classList.add('anim-enter');
             resultContainer.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            // 검색 완료 후 설문 팝업 예약 (10초 뒤, 세션당 1회)
+            if (typeof scheduleSurveyPopup === 'function') scheduleSurveyPopup();
         }
 
         // ============ 도감에 수동 저장 ============
@@ -1768,6 +1844,7 @@
             updateHistoryBadge();
             loadStatus();
             restoreAuth();
+            initCrossDomainSSO();
             loadHistory();
             renderRandomRecommendPlants();
 
@@ -2093,3 +2170,131 @@
                 loadWateringCards();
             }
         };
+
+        // ============ 설문조사 ============
+        const SURVEY_DONE_KEY = 'pwiki-survey-done';
+        const surveyAnswers = {};   // 메모리 내 응답 저장
+        let surveyPopupShown = false;
+
+        const STAR_LABELS = ['', '매우 불만족 ⭐', '불만족 ⭐⭐', '보통 ⭐⭐⭐', '만족 ⭐⭐⭐⭐', '매우 만족 ⭐⭐⭐⭐⭐'];
+
+        function setSurveyYN(q, v, btn) {
+            surveyAnswers[q] = v;
+            // 같은 그룹의 다른 버튼 비활성화
+            btn.closest('.survey-btn-group').querySelectorAll('.survey-yn-btn').forEach(b => {
+                b.classList.toggle('selected', b === btn);
+            });
+        }
+
+        function setSurveyStar(q, v) {
+            surveyAnswers[q] = v;
+            const container = document.getElementById('survey-stars-' + q);
+            if (!container) return;
+            container.querySelectorAll('.survey-star').forEach((s, i) => {
+                s.classList.toggle('filled', i < v);
+            });
+            const label = document.getElementById('survey-star-label-' + q);
+            if (label) label.textContent = STAR_LABELS[v] || '';
+        }
+
+        function openSurveyModal() {
+            const modal = document.getElementById('survey-modal');
+            if (!modal) return;
+            modal.style.display = 'flex';
+            document.body.style.overflow = 'hidden';
+            surveyPopupShown = true;
+        }
+
+        function closeSurveyModal() {
+            const modal = document.getElementById('survey-modal');
+            if (!modal) return;
+            modal.style.display = 'none';
+            document.body.style.overflow = '';
+        }
+
+        function closeSurveyModalOnBackdrop(e) {
+            if (e.target === e.currentTarget) closeSurveyModal();
+        }
+
+        async function submitSurvey(source) {
+            // 체크박스 수집
+            const checkClass = source === 'popup' ? '.survey-check-popup' : '.survey-check';
+            const checked = [...document.querySelectorAll(checkClass + ':checked')].map(c => c.value);
+            const commentId = source === 'popup' ? 'survey-popup-comment' : 'survey-comment';
+            const comment = (document.getElementById(commentId)?.value || '').trim();
+
+            // prefix 별로 응답키 정규화
+            const prefix = source === 'popup' ? 'p_' : '';
+            const payload = {
+                source,
+                reuse:    surveyAnswers[prefix + 'reuse']    || null,
+                speed:    surveyAnswers[prefix + 'speed']    || null,
+                accuracy: surveyAnswers[prefix + 'accuracy'] || null,
+                aihelp:   surveyAnswers[prefix + 'aihelp']   || null,
+                differentiators: checked,
+                comment,
+                submitted_at: new Date().toISOString(),
+                email: getStoredEmail() || null
+            };
+
+            // 최소 1개 이상 응답 필요
+            const hasAny = payload.reuse || payload.speed || payload.accuracy || payload.aihelp || checked.length || comment;
+            if (!hasAny) {
+                showToast('최소 하나의 항목을 선택해 주세요! 🌱', 'error');
+                return;
+            }
+
+            try {
+                // Supabase에 저장 시도
+                await fetch('/api/survey/submit', {
+                    method: 'POST',
+                    headers: { ...authHeaders(), 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+            } catch (e) { /* 네트워크 실패 시 무시 */ }
+
+            // 로컬에도 저장 (오프라인 대비)
+            try {
+                const stored = JSON.parse(localStorage.getItem(SURVEY_DONE_KEY) || '[]');
+                stored.push(payload);
+                localStorage.setItem(SURVEY_DONE_KEY, JSON.stringify(stored));
+            } catch (e) {}
+
+            // 완료 UI 전환
+            if (source === 'popup') {
+                document.getElementById('survey-popup-form')?.classList.add('hidden');
+                document.getElementById('survey-popup-done')?.classList.remove('hidden');
+                setTimeout(closeSurveyModal, 2000);
+            } else {
+                document.getElementById('survey-inline-form')?.classList.add('hidden');
+                document.getElementById('survey-inline-done')?.classList.remove('hidden');
+            }
+            showToast('설문 제출 완료! 고마워요 🎉', 'success');
+        }
+
+        function resetSurvey() {
+            // 인라인 설문 초기화
+            document.getElementById('survey-inline-form')?.classList.remove('hidden');
+            document.getElementById('survey-inline-done')?.classList.add('hidden');
+            document.querySelectorAll('.survey-yn-btn').forEach(b => b.classList.remove('selected'));
+            document.querySelectorAll('.survey-star').forEach(s => s.classList.remove('filled'));
+            document.querySelectorAll('.survey-check, .survey-check-popup').forEach(c => c.checked = false);
+            document.querySelectorAll('.survey-star-label').forEach(l => l.textContent = '선택하세요');
+            if (document.getElementById('survey-comment')) document.getElementById('survey-comment').value = '';
+            if (document.getElementById('survey-popup-comment')) document.getElementById('survey-popup-comment').value = '';
+            Object.keys(surveyAnswers).forEach(k => delete surveyAnswers[k]);
+        }
+
+        // 검색 완료 후 설문 팝업 자동 트리거 (1회 검색 후 10초 뒤, 세션당 1회)
+        let surveyTriggerTimer = null;
+        function scheduleSurveyPopup() {
+            if (surveyPopupShown) return;
+            // 이미 이 세션에서 보여줬으면 스킵
+            if (sessionStorage.getItem('pwiki-survey-shown')) return;
+            if (surveyTriggerTimer) clearTimeout(surveyTriggerTimer);
+            surveyTriggerTimer = setTimeout(() => {
+                sessionStorage.setItem('pwiki-survey-shown', '1');
+                openSurveyModal();
+            }, 10000); // 검색 결과 표시 후 10초 뒤
+        }
+

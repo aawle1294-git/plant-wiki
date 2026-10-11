@@ -1350,6 +1350,10 @@ async def serve_privacy(request: Request):
 async def serve_terms(request: Request):
     return templates.TemplateResponse(request=request, name="terms.html", context={})
 
+@app.get("/sso-hub", response_class=HTMLResponse)
+async def serve_sso_hub(request: Request):
+    return templates.TemplateResponse(request=request, name="sso_hub.html", context={})
+
 @app.post("/api/search")
 async def search_plant(payload: SearchRequest, request: Request):
     plant_name = payload.name.strip()
@@ -1522,9 +1526,17 @@ async def oauth_google(redirect_to: Optional[str] = None):
             status_code=503,
             content={"status": "error", "message": "Supabase가 설정되지 않았습니다."}
         )
-    # FRONTEND_URL 환경변수 우선 → 없으면 클라이언트가 보낸 redirect_to → 최후엔 localhost
-    FRONTEND_URL = os.getenv("FRONTEND_URL", "").strip()
-    target = FRONTEND_URL or redirect_to or "http://localhost:8000"
+    # 안전한 허용 도메인 목록 (어떤 도메인에서 로그인하든 해당 도메인으로 정확히 복귀)
+    allowed_domains = ["plantip.onrender.com", "kro.kr", "localhost", "127.0.0.1"]
+    target = None
+    if redirect_to:
+        for domain in allowed_domains:
+            if domain in redirect_to:
+                target = redirect_to
+                break
+    if not target:
+        FRONTEND_URL = os.getenv("FRONTEND_URL", "").strip()
+        target = FRONTEND_URL or "https://plantip.onrender.com"
     authorize_url = f"{SUPABASE_URL}/auth/v1/authorize?provider=google&redirect_to={target}"
 
     # Supabase Provider 활성화 여부 사전 검사
@@ -1815,6 +1827,92 @@ async def get_sitemap_xml():
 </urlset>
 """
     return Response(content=content, media_type="application/xml")
+
+# ===================== 설문조사 API =====================
+# 인메모리 설문 응답 임시 저장 (Supabase 미연결 시 폴백)
+MEMORY_SURVEY_RESPONSES: list = []
+
+class SurveySubmitPayload(BaseModel):
+    source: Optional[str] = "inline"
+    reuse: Optional[str] = None
+    speed: Optional[int] = None
+    accuracy: Optional[int] = None
+    aihelp: Optional[str] = None
+    differentiators: Optional[List[str]] = None
+    comment: Optional[str] = None
+    submitted_at: Optional[str] = None
+    email: Optional[str] = None
+
+@app.post("/api/survey/submit")
+async def submit_survey(payload: SurveySubmitPayload, request: Request):
+    """
+    설문 응답 제출 — 로그인 불필요, 누구나 응답 가능.
+    Supabase survey_responses 테이블에 저장하며, 미연결 시 인메모리에 보관.
+    """
+    record = {
+        "source":           payload.source,
+        "reuse":            payload.reuse,
+        "speed":            payload.speed,
+        "accuracy":         payload.accuracy,
+        "aihelp":           payload.aihelp,
+        "differentiators":  json.dumps(payload.differentiators or [], ensure_ascii=False),
+        "comment":          payload.comment or "",
+        "email":            payload.email or request.headers.get("X-Device-Email", ""),
+        "submitted_at":     payload.submitted_at or datetime.now(timezone.utc).isoformat(),
+        "ip_hint":          request.client.host[:8] + "***" if request.client else "unknown",
+    }
+
+    sb = get_supabase()
+    if sb:
+        try:
+            sb.table("survey_responses").insert(record).execute()
+            logger.info(f"[Survey] Saved to Supabase: source={payload.source}")
+        except Exception as e:
+            logger.warning(f"[Survey] Supabase insert failed, saving to memory: {e}")
+            MEMORY_SURVEY_RESPONSES.append(record)
+    else:
+        MEMORY_SURVEY_RESPONSES.append(record)
+        logger.info(f"[Survey] Saved to memory (no DB): source={payload.source}")
+
+    return JSONResponse(content={"status": "success", "message": "설문 응답이 저장되었습니다."})
+
+@app.get("/api/survey/results")
+async def get_survey_results(request: Request):
+    """설문 결과 집계 (관리자용 — 향후 인증 추가 예정)"""
+    sb = get_supabase()
+    results = []
+    if sb:
+        try:
+            res = sb.table("survey_responses").select("*").order("submitted_at", desc=True).limit(200).execute()
+            results = res.data or []
+        except Exception as e:
+            logger.warning(f"[Survey] Failed to fetch results: {e}")
+            results = MEMORY_SURVEY_RESPONSES
+    else:
+        results = MEMORY_SURVEY_RESPONSES
+
+    # 간단 집계
+    total = len(results)
+    reuse_yes = sum(1 for r in results if r.get("reuse") == "yes")
+    avg_speed = round(sum(r.get("speed") or 0 for r in results if r.get("speed")) /
+                      max(1, sum(1 for r in results if r.get("speed"))), 2)
+    avg_accuracy = round(sum(r.get("accuracy") or 0 for r in results if r.get("accuracy")) /
+                         max(1, sum(1 for r in results if r.get("accuracy"))), 2)
+    aihelp_counts = {"yes": 0, "same": 0, "no": 0}
+    for r in results:
+        k = r.get("aihelp")
+        if k in aihelp_counts:
+            aihelp_counts[k] += 1
+
+    return JSONResponse(content={
+        "status": "success",
+        "total_responses": total,
+        "reuse_yes_rate": f"{round(reuse_yes/max(1,total)*100)}%",
+        "avg_speed": avg_speed,
+        "avg_accuracy": avg_accuracy,
+        "aihelp": aihelp_counts,
+        "responses": results[:50]
+    })
 
 if __name__ == "__main__":
     import uvicorn

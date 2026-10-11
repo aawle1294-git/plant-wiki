@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <title>Plant!p SSO Hub</title>
+</head>
+<body>
+<script>
+    // 허용된 도메인 화이트리스트
+    const ALLOWED_ORIGIN_PATTERNS = [
+        /^https:\/\/plantip\.onrender\.com$/,
+        /^https:\/\/.*\.kro\.kr$/,
+        /^http:\/\/localhost(:\d+)?$/,
+        /^http:\/\/127\.0\.0\.1(:\d+)?$/
+    ];
+
+    function isAllowedOrigin(origin) {
+        return ALLOWED_ORIGIN_PATTERNS.some(p => p.test(origin));
+    }
+
+    const KEYS = [
+        'pwiki-sb-token',
+        'pwiki-sb-refresh-token',
+        'pwiki-sb-email',
+        'pwiki-device-id',
+        'pwiki-auto-login-enabled',
+        'pwiki-profile-cache',
+        'plantwiki_owned_items'
+    ];
+
+    window.addEventListener('message', (event) => {
+        if (!isAllowedOrigin(event.origin)) return;
+
+        const data = event.data;
+        if (!data || typeof data !== 'object') return;
+
+        if (data.type === 'PWIKI_GET_SSO_SESSION') {
+            const session = {};
+            KEYS.forEach(k => {
+                const val = localStorage.getItem(k);
+                if (val !== null) session[k] = val;
+            });
+            event.source.postMessage({
+                type: 'PWIKI_SSO_SESSION_RESULT',
+                session: session
+            }, event.origin);
+        } else if (data.type === 'PWIKI_SET_SSO_SESSION') {
+            if (data.session && typeof data.session === 'object') {
+                Object.entries(data.session).forEach(([k, v]) => {
+                    if (KEYS.includes(k) && v !== null && v !== undefined) {
+                        localStorage.setItem(k, v);
+                    }
+                });
+                event.source.postMessage({
+                    type: 'PWIKI_SSO_SAVED_ACK'
+                }, event.origin);
+            }
+        } else if (data.type === 'PWIKI_CLEAR_SSO_SESSION') {
+            KEYS.forEach(k => localStorage.removeItem(k));
+            event.source.postMessage({
+                type: 'PWIKI_SSO_CLEARED_ACK'
+            }, event.origin);
+        }
+    });
+
+    // 준비 완료 알림
+    if (window.parent && window.parent !== window) {
+        window.parent.postMessage({ type: 'PWIKI_SSO_HUB_READY' }, '*');
+    }
+</script>
+</body>
+</html>
