@@ -901,7 +901,23 @@
                                 📋 사용자 설문조사 — <span class="font-extrabold italic"
                                     style="background: linear-gradient(135deg, #059669, #2dd4bf); -webkit-background-clip: text; background-clip: text; color: transparent;">Plant!p vs 일반 검색, 솔직한 한마디!</span>
                             </p>
-                            <p class="text-xs mt-1" style="color: var(--muted)">여러분의 소중한 의견이 Plant!p를 더 좋게 만들어요. 약 1분이면 충분해요! 🌿</p>
+                            <p class="text-xs mt-1" style="color: var(--muted)">여러분의 소중한 의견이 Plant!p를 더 좋게 만들어요. 약 2분이면 충분해요! 🌿</p>
+                            <!-- 구글 폼 바로가기 카드 배너 -->
+                            <div class="mt-3 p-4 rounded-2xl flex items-center justify-between gap-3 shadow-sm" style="background: var(--tile-emerald-bg, rgba(5,150,105,0.08)); border: 1px solid var(--tile-emerald-bd, rgba(5,150,105,0.25));">
+                                <div>
+                                    <p class="text-sm font-bold flex items-center gap-1.5" style="color: var(--text)">
+                                        <span>📝</span><span>공식 구글 폼 설문조사</span>
+                                        <span class="text-[10px] px-2 py-0.5 rounded-full font-semibold text-white" style="background: #10b981;">추천</span>
+                                    </p>
+                                    <p class="text-xs mt-1" style="color: var(--muted)">위키백과 / 일반 AI 대비 차별점 및 피드백을 전달해 주세요!</p>
+                                </div>
+                                <a href="https://forms.gle/dFwphnR5MTwhUrwP9" target="_blank" rel="noopener noreferrer"
+                                   class="px-4 py-2.5 rounded-xl text-xs font-bold text-white shadow-md flex items-center gap-1.5 shrink-0 transition-transform hover:scale-105 active:scale-95"
+                                   style="background: linear-gradient(135deg, #059669, #0284c7);">
+                                    <span>설문 참여</span>
+                                    <span aria-hidden="true">↗</span>
+                                </a>
+                            </div>
                             <div id="survey-inline-content" class="mt-4">
                                 <!-- 설문 폼 (인라인) -->
                                 <div id="survey-inline-form">
@@ -989,6 +1005,12 @@
         </div>
         <!-- 바디 -->
         <div style="padding:16px 20px 20px;" id="survey-popup-body">
+            <!-- 구글 폼 다이렉트 버튼 -->
+            <a href="https://forms.gle/dFwphnR5MTwhUrwP9" target="_blank" rel="noopener noreferrer"
+               class="w-full py-2.5 px-3 rounded-xl text-xs font-bold text-center flex items-center justify-center gap-1.5 mb-3.5 transition-transform hover:scale-[1.01]"
+               style="background: rgba(5,150,105,0.1); border: 1px dashed rgba(5,150,105,0.35); color: #059669;">
+                <span>📝 구글 폼에서 상세 설문 참여하기 (새 창 ↗)</span>
+            </a>
             <div id="survey-popup-form">
                 <!-- Q1 -->
                 <div class="survey-q-block">
@@ -1226,6 +1248,8 @@
     <!-- ===================== Footer ===================== -->
     <footer class="text-center py-6 mt-10 border-t border-gray-100" style="border-color: var(--card-border);">
         <div class="space-x-4 text-sm text-gray-500" style="color: var(--text-muted);">
+            <a href="https://forms.gle/dFwphnR5MTwhUrwP9" target="_blank" rel="noopener noreferrer" class="hover:underline font-bold text-emerald-600 dark:text-emerald-400">📋 설문조사 참여</a>
+            <span>|</span>
             <a href="/privacy" class="hover:underline">개인정보처리방침</a>
             <span>|</span>
             <a href="/terms" class="hover:underline">이용약관</a>
