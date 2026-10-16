@@ -2317,3 +2317,455 @@
             }, 10000); // 검색 결과 표시 후 10초 뒤
         }
 
+        // ===================== 식집사 커뮤니티 & 친구 컨트롤러 =====================
+        let communityPostsData = [];
+        let communityAttachedMedia = null;
+        let communityAttachedMediaType = null;
+        let communityFriendsCount = 0;
+
+        function openCommunityView() {
+            // 커뮤니티는 로그인 필수
+            if (!isLoggedIn()) {
+                showToast('커뮤니티는 로그인 후 이용하실 수 있어요! 🌱', 'info');
+                openAuth();
+                return;
+            }
+
+            const modal = document.getElementById('community-modal');
+            if (!modal) return;
+            modal.classList.add('open');
+            document.body.style.overflow = 'hidden';
+
+            // 친구 목록 및 피드 로드
+            loadCommunityFriendsCount();
+            loadCommunityPosts();
+        }
+
+        function closeCommunityView() {
+            const modal = document.getElementById('community-modal');
+            if (modal) modal.classList.remove('open');
+            document.body.style.overflow = '';
+        }
+
+        function closeCommunityOnBackdrop(e) {
+            if (e.target === e.currentTarget) closeCommunityView();
+        }
+
+        function onCommunityFilterChange() {
+            loadCommunityPosts();
+        }
+
+        function onCommunitySortChange() {
+            loadCommunityPosts();
+        }
+
+        async function loadCommunityFriendsCount() {
+            try {
+                const res = await fetch('/api/community/friends', { headers: authHeaders() });
+                if (res.ok) {
+                    const data = await res.json();
+                    communityFriendsCount = data.total || 0;
+                    const badge = document.getElementById('community-friend-count');
+                    if (badge) badge.innerText = communityFriendsCount;
+                }
+            } catch (e) {
+                console.warn('Friends count load error:', e);
+            }
+        }
+
+        async function loadCommunityPosts() {
+            const tag = document.getElementById('community-tag-filter')?.value || '전체';
+            const sort = document.getElementById('community-sort-select')?.value || 'latest';
+            const loading = document.getElementById('community-loading');
+            const feedList = document.getElementById('community-feed-list');
+            const emptyFeed = document.getElementById('community-empty-feed');
+
+            if (loading) loading.classList.remove('hidden');
+            if (feedList) feedList.innerHTML = '';
+            if (emptyFeed) emptyFeed.classList.add('hidden');
+
+            try {
+                const url = `/api/community/posts?tag=${encodeURIComponent(tag)}&sort=${encodeURIComponent(sort)}`;
+                const res = await fetch(url, { headers: authHeaders() });
+                if (!res.ok) throw new Error('피드를 불러오지 못했습니다.');
+                const data = await res.json();
+                communityPostsData = data.data || [];
+
+                if (loading) loading.classList.add('hidden');
+
+                if (communityPostsData.length === 0) {
+                    if (emptyFeed) emptyFeed.classList.remove('hidden');
+                } else {
+                    renderCommunityFeed(communityPostsData);
+                }
+            } catch (err) {
+                console.error('Community load error:', err);
+                if (loading) loading.classList.add('hidden');
+                showToast(err.message || '피드 로딩 실패', 'error');
+            }
+        }
+
+        function renderCommunityFeed(posts) {
+            const container = document.getElementById('community-feed-list');
+            if (!container) return;
+            container.innerHTML = '';
+
+            posts.forEach(post => {
+                const card = document.createElement('div');
+                card.className = `feed-card ${post.is_friend ? 'is-friend-post' : ''}`;
+
+                // 작성 시간 포맷
+                let timeStr = '방금 전';
+                if (post.created_at) {
+                    try {
+                        const date = new Date(post.created_at);
+                        const diffMins = Math.floor((Date.now() - date.getTime()) / 60000);
+                        if (diffMins < 1) timeStr = '방금 전';
+                        else if (diffMins < 60) timeStr = `${diffMins}분 전`;
+                        else if (diffMins < 1440) timeStr = `${Math.floor(diffMins / 60)}시간 전`;
+                        else timeStr = `${Math.floor(diffMins / 1440)}일 전`;
+                    } catch (e) {}
+                }
+
+                // 친구 리본
+                const friendRibbon = post.is_friend
+                    ? `<div class="feed-friend-ribbon"><span>🌟</span><span>내 친구의 소식</span></div>`
+                    : '';
+
+                // 미디어 (사진 또는 GIF)
+                let mediaHtml = '';
+                if (post.media_url) {
+                    mediaHtml = `
+                        <div class="feed-media-container">
+                            <img src="${post.media_url}" alt="첨부 이미지" class="feed-media-img" loading="lazy">
+                        </div>
+                    `;
+                }
+
+                // 삭제 버튼 (본인 글일 때)
+                const deleteBtn = post.is_mine
+                    ? `<button type="button" onclick="handleDeleteCommunityPost('${post.id}')" class="text-xs text-red-500 hover:underline ml-2" title="게시글 삭제">삭제</button>`
+                    : '';
+
+                // 태그 색상/텍스트
+                const tag = post.tag || '자유';
+                const tagColor = tag === '자랑' ? 'text-emerald-600 bg-emerald-50 dark:bg-emerald-950/40' :
+                                 tag === '질문' ? 'text-amber-600 bg-amber-50 dark:bg-amber-950/40' :
+                                 tag === '나눔' ? 'text-purple-600 bg-purple-50 dark:bg-purple-950/40' : 'text-blue-600 bg-blue-50 dark:bg-blue-950/40';
+
+                card.innerHTML = `
+                    ${friendRibbon}
+                    <div class="flex items-center justify-between mb-2">
+                        <div class="flex items-center gap-2.5">
+                            <span class="text-2xl">${post.author_avatar || '🌱'}</span>
+                            <div>
+                                <div class="flex items-center gap-1.5">
+                                    <span class="font-extrabold text-sm" style="color: var(--text);">${escapeHtml(post.author_nickname || '식집사')}</span>
+                                    <span class="text-[10px] px-1.5 py-0.2 rounded-full font-bold" style="background: var(--tile-purple-bg); color: var(--tile-purple-tx);">${escapeHtml(post.author_title || '새싹')}</span>
+                                    ${post.is_mine ? '<span class="text-[9px] bg-gray-200 dark:bg-gray-700 px-1 rounded text-muted">나</span>' : ''}
+                                </div>
+                                <span class="text-[11px]" style="color: var(--muted);">${timeStr}</span>
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-1">
+                            <span class="text-[11px] font-bold px-2 py-0.5 rounded-lg ${tagColor}">#${escapeHtml(tag)}</span>
+                            ${deleteBtn}
+                        </div>
+                    </div>
+
+                    <div class="text-sm my-2 leading-relaxed whitespace-pre-line" style="color: var(--text);">
+                        ${escapeHtml(post.content || '')}
+                    </div>
+
+                    ${mediaHtml}
+
+                    <div class="flex items-center justify-between pt-2 border-t mt-3" style="border-color: var(--card-border);">
+                        <button type="button" onclick="handleCommunityLike('${post.id}', this)" class="feed-like-btn ${post.is_liked ? 'liked' : ''}">
+                            <span>${post.is_liked ? '❤️' : '🤍'}</span>
+                            <span class="like-count">${post.likes_count || 0}</span>
+                        </button>
+                        <span class="text-[11px]" style="color: var(--muted);">댓글 소통 🌿</span>
+                    </div>
+                `;
+
+                container.appendChild(card);
+            });
+        }
+
+        async function handleCommunityLike(postId, btn) {
+            if (!isLoggedIn()) {
+                showToast('로그인이 필요합니다! 🌱', 'info');
+                return;
+            }
+
+            try {
+                const res = await fetch(`/api/community/posts/${postId}/like`, {
+                    method: 'POST',
+                    headers: authHeaders()
+                });
+                if (res.ok) {
+                    const data = await res.json();
+                    btn.classList.toggle('liked', data.liked);
+                    btn.querySelector('span:first-child').innerText = data.liked ? '❤️' : '🤍';
+                    btn.querySelector('.like-count').innerText = data.likes_count;
+                }
+            } catch (e) {
+                console.warn('Like error:', e);
+            }
+        }
+
+        async function handleDeleteCommunityPost(postId) {
+            if (!confirm('정말 이 게시글을 삭제하시겠습니까?')) return;
+            try {
+                const res = await fetch(`/api/community/posts/${postId}`, {
+                    method: 'DELETE',
+                    headers: authHeaders()
+                });
+                if (res.ok) {
+                    showToast('게시글이 삭제되었습니다.', 'info');
+                    loadCommunityPosts();
+                } else {
+                    const err = await res.json();
+                    showToast(err.detail || '삭제 실패', 'error');
+                }
+            } catch (e) {
+                showToast('삭제 중 오류가 발생했습니다.', 'error');
+            }
+        }
+
+        // ===================== 글쓰기 모달 제어 =====================
+        function openCommunityWriteModal() {
+            if (!isLoggedIn()) {
+                showToast('로그인 후 글을 작성할 수 있어요! 🌱', 'info');
+                openAuth();
+                return;
+            }
+            const modal = document.getElementById('community-write-modal');
+            if (modal) modal.classList.add('open');
+            clearCommunityMediaPreview();
+            const textarea = document.getElementById('write-post-content');
+            if (textarea) {
+                textarea.value = '';
+                document.getElementById('write-char-count').innerText = '0 / 1000';
+            }
+        }
+
+        function closeCommunityWriteModal() {
+            const modal = document.getElementById('community-write-modal');
+            if (modal) modal.classList.remove('open');
+            clearCommunityMediaPreview();
+        }
+
+        function closeCommunityWriteOnBackdrop(e) {
+            if (e.target === e.currentTarget) closeCommunityWriteModal();
+        }
+
+        function handleCommunityMediaSelect(event) {
+            const file = event.target.files?.[0];
+            if (!file) return;
+
+            // 파일 크기 제한 (최대 4MB)
+            if (file.size > 4 * 1024 * 1024) {
+                showToast('이미지 및 GIF 파일은 4MB 이하만 첨부할 수 있습니다! 🌱', 'error');
+                event.target.value = '';
+                return;
+            }
+
+            const isGif = file.type === 'image/gif' || file.name.toLowerCase().endsWith('.gif');
+            communityAttachedMediaType = isGif ? 'gif' : 'image';
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                communityAttachedMedia = e.target.result;
+                const previewBox = document.getElementById('write-media-preview-box');
+                const previewImg = document.getElementById('write-media-preview-img');
+                const badge = document.getElementById('write-media-preview-badge');
+                if (previewBox && previewImg) {
+                    previewImg.src = communityAttachedMedia;
+                    previewBox.classList.remove('hidden');
+                    if (badge) badge.innerText = isGif ? 'GIF' : 'IMAGE';
+                }
+            };
+            reader.readAsDataURL(file);
+        }
+
+        function clearCommunityMediaPreview() {
+            communityAttachedMedia = null;
+            communityAttachedMediaType = null;
+            const fileInput = document.getElementById('write-post-file');
+            if (fileInput) fileInput.value = '';
+            const previewBox = document.getElementById('write-media-preview-box');
+            if (previewBox) previewBox.classList.add('hidden');
+        }
+
+        async function handleCommunityWriteSubmit(event) {
+            event.preventDefault();
+            const content = document.getElementById('write-post-content')?.value.trim();
+            const tag = document.getElementById('write-post-tag')?.value || '자유';
+            const submitBtn = document.getElementById('write-submit-btn');
+
+            if (!content) {
+                showToast('내용을 입력해 주세요! 🌿', 'error');
+                return;
+            }
+
+            if (submitBtn) {
+                submitBtn.disabled = true;
+                submitBtn.innerHTML = '<span>🤖 AI 검토 중...</span>';
+            }
+
+            try {
+                const res = await fetch('/api/community/posts', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        ...authHeaders()
+                    },
+                    body: JSON.stringify({
+                        content: content,
+                        tag: tag,
+                        media_url: communityAttachedMedia,
+                        media_type: communityAttachedMediaType
+                    })
+                });
+
+                const data = await res.json();
+                if (!res.ok) {
+                    throw new Error(data.detail || '게시글 등록에 실패했습니다.');
+                }
+
+                showToast(data.message || '게시글이 성공적으로 등록되었습니다! 🎉', 'success');
+                closeCommunityWriteModal();
+                loadCommunityPosts();
+
+                // 글 작성 보상으로 프로필 리프 업데이트
+                fetchProfile();
+
+            } catch (err) {
+                console.error('Post submit error:', err);
+                showToast(err.message, 'error');
+            } finally {
+                if (submitBtn) {
+                    submitBtn.disabled = false;
+                    submitBtn.innerHTML = '<span>🚀 등록하기 (+5 🍃)</span>';
+                }
+            }
+        }
+
+        // ===================== 친구 관리 모달 제어 =====================
+        function openCommunityFriendsModal() {
+            if (!isLoggedIn()) {
+                showToast('로그인 후 친구 기능을 사용할 수 있어요! 🌱', 'info');
+                openAuth();
+                return;
+            }
+            const modal = document.getElementById('community-friends-modal');
+            if (modal) modal.classList.add('open');
+            loadCommunityFriendsList();
+        }
+
+        function closeCommunityFriendsModal() {
+            const modal = document.getElementById('community-friends-modal');
+            if (modal) modal.classList.remove('open');
+        }
+
+        function closeCommunityFriendsOnBackdrop(e) {
+            if (e.target === e.currentTarget) closeCommunityFriendsModal();
+        }
+
+        async function loadCommunityFriendsList() {
+            const container = document.getElementById('community-friends-list');
+            const countLabel = document.getElementById('friends-list-count');
+            if (!container) return;
+            container.innerHTML = '<p class="text-xs text-center py-4 text-muted">친구 목록을 불러오는 중...</p>';
+
+            try {
+                const res = await fetch('/api/community/friends', { headers: authHeaders() });
+                if (!res.ok) throw new Error('친구 목록 조회 실패');
+                const data = await res.json();
+                const friends = data.data || [];
+                if (countLabel) countLabel.innerText = `${friends.length}명`;
+                const topBadge = document.getElementById('community-friend-count');
+                if (topBadge) topBadge.innerText = friends.length;
+
+                if (friends.length === 0) {
+                    container.innerHTML = '<p class="text-xs text-center py-6 text-muted">아직 등록된 친구가 없습니다.<br>위에서 친구의 이메일로 친구를 추가해 보세요! 🌿</p>';
+                    return;
+                }
+
+                container.innerHTML = '';
+                friends.forEach(f => {
+                    const row = document.createElement('div');
+                    row.className = 'flex items-center justify-between p-2.5 rounded-xl border';
+                    row.style.background = 'var(--bg)';
+                    row.style.borderColor = 'var(--card-border)';
+                    row.innerHTML = `
+                        <div class="flex items-center gap-2">
+                            <span class="text-xl">${f.avatar_emoji || '🌱'}</span>
+                            <div>
+                                <p class="text-xs font-bold" style="color: var(--text);">${escapeHtml(f.nickname || '식집사')}</p>
+                                <p class="text-[10px]" style="color: var(--muted);">${escapeHtml(f.email || '')}</p>
+                            </div>
+                        </div>
+                        <button type="button" onclick="handleRemoveCommunityFriend('${f.id}')" class="text-[11px] text-red-500 hover:underline px-2 py-1">삭제</button>
+                    `;
+                    container.appendChild(row);
+                });
+            } catch (e) {
+                container.innerHTML = '<p class="text-xs text-center py-4 text-red-500">목록을 불러오지 못했습니다.</p>';
+            }
+        }
+
+        async function handleCommunityAddFriend(event) {
+            event.preventDefault();
+            const emailInput = document.getElementById('friend-add-email');
+            const email = emailInput?.value.trim();
+            if (!email) return;
+
+            try {
+                const res = await fetch('/api/community/friends/add', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', ...authHeaders() },
+                    body: JSON.stringify({ friend_email: email })
+                });
+                const data = await res.json();
+                if (!res.ok) throw new Error(data.detail || '친구 추가에 실패했습니다.');
+
+                showToast(data.message || '친구 추가 완료! 🌟', 'success');
+                if (emailInput) emailInput.value = '';
+                loadCommunityFriendsList();
+                loadCommunityPosts(); // 친구 글 최상단 재정렬
+            } catch (err) {
+                showToast(err.message, 'error');
+            }
+        }
+
+        async function handleRemoveCommunityFriend(friendId) {
+            if (!confirm('친구를 삭제하시겠습니까?')) return;
+            try {
+                const res = await fetch(`/api/community/friends/${friendId}`, {
+                    method: 'DELETE',
+                    headers: authHeaders()
+                });
+                if (res.ok) {
+                    showToast('친구가 삭제되었습니다.', 'info');
+                    loadCommunityFriendsList();
+                    loadCommunityPosts();
+                }
+            } catch (e) {
+                showToast('삭제 실패', 'error');
+            }
+        }
+
+        // 글자수 카운터 이벤트 바인딩
+        document.addEventListener('DOMContentLoaded', () => {
+            const writeContent = document.getElementById('write-post-content');
+            const charCount = document.getElementById('write-char-count');
+            if (writeContent && charCount) {
+                writeContent.addEventListener('input', () => {
+                    charCount.innerText = `${writeContent.value.length} / 1000`;
+                });
+            }
+        });
+
+

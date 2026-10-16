@@ -23,6 +23,9 @@ def _save_memory():
         "MEMORY_PROFILES": MEMORY_PROFILES,
         "MEMORY_LEAF_TX": dict(MEMORY_LEAF_TX),
         "MEMORY_WATERING_SCHEDULES": dict(MEMORY_WATERING_SCHEDULES),
+        "MEMORY_COMMUNITY_POSTS": MEMORY_COMMUNITY_POSTS,
+        "MEMORY_FRIENDSHIPS": dict(MEMORY_FRIENDSHIPS),
+        "MEMORY_COMMUNITY_LIKES": dict(MEMORY_COMMUNITY_LIKES),
     }
     try:
         with open(MEMORY_DB_FILE, "w", encoding="utf-8") as f:
@@ -43,3 +46,7 @@ MEMORY_HISTORY: Dict[str, List[Dict[str, Any]]] = _convert_to_defaultdict(_mem_d
 MEMORY_PROFILES: Dict[str, Dict[str, Any]] = _mem_data.get("MEMORY_PROFILES", {})
 MEMORY_LEAF_TX: Dict[str, List[Dict[str, Any]]] = _convert_to_defaultdict(_mem_data.get("MEMORY_LEAF_TX", {}), list)
 MEMORY_WATERING_SCHEDULES: Dict[str, List[Dict[str, Any]]] = _convert_to_defaultdict(_mem_data.get("MEMORY_WATERING_SCHEDULES", {}), list)
+MEMORY_COMMUNITY_POSTS: List[Dict[str, Any]] = _mem_data.get("MEMORY_COMMUNITY_POSTS", [])
+MEMORY_FRIENDSHIPS: Dict[str, List[str]] = _convert_to_defaultdict(_mem_data.get("MEMORY_FRIENDSHIPS", {}), list)
+MEMORY_COMMUNITY_LIKES: Dict[str, List[str]] = _convert_to_defaultdict(_mem_data.get("MEMORY_COMMUNITY_LIKES", {}), list)
+

@@ -156,3 +156,65 @@ alter table public.plant_directory enable row level security;
 
 drop policy if exists \plant_directory: read all\ on public.plant_directory;
 create policy \plant_directory: read all\ on public.plant_directory for select using (true);
+
+-- ==============================================================================
+-- 7. 식집사 커뮤니티 & 친구 & 좋아요 테이블
+-- ==============================================================================
+
+create table if not exists public.community_posts (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references auth.users(id) on delete cascade,
+  author_email text,
+  author_nickname text not null default '새싹 식집사',
+  author_avatar text not null default '🌱',
+  author_title text not null default '새싹',
+  content text not null,
+  media_url text,
+  media_type text,
+  tag text not null default '자유',
+  likes_count integer not null default 0,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+alter table public.community_posts enable row level security;
+
+drop policy if exists " community_posts: read all\ on public.community_posts;
+create policy \community_posts: read all\ on public.community_posts for select using (true);
+
+drop policy if exists \community_posts: insert own\ on public.community_posts;
+create policy \community_posts: insert own\ on public.community_posts for insert with check (auth.uid() = user_id);
+
+drop policy if exists \community_posts: delete own\ on public.community_posts;
+create policy \community_posts: delete own\ on public.community_posts for delete using (auth.uid() = user_id);
+
+create table if not exists public.friendships (
+ id uuid primary key default gen_random_uuid(),
+ user_id uuid not null references auth.users(id) on delete cascade,
+ friend_id uuid not null references auth.users(id) on delete cascade,
+ status text not null default 'accepted',
+ created_at timestamptz not null default now(),
+ unique(user_id, friend_id)
+);
+
+alter table public.friendships enable row level security;
+
+drop policy if exists \friendships: manage own\ on public.friendships;
+create policy \friendships: manage own\ on public.friendships
+ for all using (auth.uid() = user_id or auth.uid() = friend_id);
+
+create table if not exists public.community_likes (
+ id uuid primary key default gen_random_uuid(),
+ post_id uuid not null references public.community_posts(id) on delete cascade,
+ user_id uuid not null references auth.users(id) on delete cascade,
+ created_at timestamptz not null default now(),
+ unique(post_id, user_id)
+);
+
+alter table public.community_likes enable row level security;
+
+drop policy if exists \community_likes: read all\ on public.community_likes;
+create policy \community_likes: read all\ on public.community_likes for select using (true);
+
+drop policy if exists \community_likes: manage own\ on public.community_likes;
+create policy \community_likes: manage own\ on public.community_likes for all using (auth.uid() = user_id);

@@ -68,3 +68,13 @@ class SurveySubmitRequest(BaseModel):
     comment: Optional[str] = None
     submitted_at: Optional[str] = None
     email: Optional[str] = None
+
+class CommunityPostCreate(BaseModel):
+    content: str
+    tag: Optional[str] = "자유"
+    media_url: Optional[str] = None
+    media_type: Optional[str] = None  # 'image' | 'gif'
+
+class FriendAddRequest(BaseModel):
+    friend_email: str
+

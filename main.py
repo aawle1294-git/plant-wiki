@@ -1929,7 +1929,69 @@ async def get_survey_results(request: Request):
         "responses": results[:50]
     })
 
+# ===================== 커뮤니티 & 친구 API =====================
+from app.services.community import (
+    get_community_posts,
+    create_community_post,
+    toggle_post_like,
+    delete_community_post,
+    get_user_friends,
+    add_friend_by_email,
+    remove_friend,
+)
+
+@app.get("/api/community/posts")
+async def api_get_community_posts(tag: Optional[str] = None, sort: Optional[str] = "latest", request: Request = None):
+    user = _get_current_user_or_fallback(request)
+    posts = get_community_posts(user["token"], user["id"], tag=tag, sort_by=sort or "latest")
+    return {"status": "success", "total": len(posts), "data": posts}
+
+@app.post("/api/community/posts")
+async def api_create_community_post(payload: CommunityPostCreate, request: Request):
+    user = _get_current_user_or_fallback(request)
+    if not user or not user.get("id"):
+        raise HTTPException(status_code=401, detail="로그인이 필요합니다.")
+    post = create_community_post(
+        user["token"],
+        user["id"],
+        user.get("email", ""),
+        payload.content,
+        tag=payload.tag or "자유",
+        media_url=payload.media_url,
+        media_type=payload.media_type,
+    )
+    return {"status": "success", "message": "게시글이 등록되었습니다! (+5 리프 지급 🎉)", "data": post}
+
+@app.delete("/api/community/posts/{post_id}")
+async def api_delete_community_post(post_id: str, request: Request):
+    user = _get_current_user_or_fallback(request)
+    delete_community_post(user["token"], user["id"], post_id)
+    return {"status": "success", "message": "게시글이 삭제되었습니다."}
+
+@app.post("/api/community/posts/{post_id}/like")
+async def api_toggle_community_like(post_id: str, request: Request):
+    user = _get_current_user_or_fallback(request)
+    res = toggle_post_like(user["token"], user["id"], post_id)
+    return res
+
+@app.get("/api/community/friends")
+async def api_get_community_friends(request: Request):
+    user = _get_current_user_or_fallback(request)
+    friends = get_user_friends(user["token"], user["id"])
+    return {"status": "success", "total": len(friends), "data": friends}
+
+@app.post("/api/community/friends/add")
+async def api_add_community_friend(payload: FriendAddRequest, request: Request):
+    user = _get_current_user_or_fallback(request)
+    res = add_friend_by_email(user["token"], user["id"], payload.friend_email)
+    return res
+
+@app.delete("/api/community/friends/{friend_id}")
+async def api_remove_community_friend(friend_id: str, request: Request):
+    user = _get_current_user_or_fallback(request)
+    remove_friend(user["token"], user["id"], friend_id)
+    return {"status": "success", "message": "친구가 삭제되었습니다."}
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run("app:app", host="0.0.0.0", port=8000, reload=True)
-# Trigger reload

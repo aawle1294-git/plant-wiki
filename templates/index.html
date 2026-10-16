@@ -398,9 +398,9 @@
                 <span class="nav-icon">📚</span>
                 <span class="nav-label">도감</span>
             </button>
-            <button class="nav-item" onclick="openShopModal()" aria-label="상점">
-                <span class="nav-icon">🛒</span>
-                <span class="nav-label">상점</span>
+            <button class="nav-item" onclick="openCommunityView()" aria-label="커뮤니티" id="nav-btn-community">
+                <span class="nav-icon">👥</span>
+                <span class="nav-label">커뮤니티</span>
             </button>
             
             <div class="nav-item center-fab-container">
@@ -419,6 +419,178 @@
                 <span class="nav-label">설정</span>
             </button>
         </nav>
+    </div>
+
+    <!-- ===================== 식집사 커뮤니티 모달 (풀스크린 뷰) ===================== -->
+    <div id="community-modal" onclick="closeCommunityOnBackdrop(event)" class="community-modal-overlay">
+        <div class="community-panel" role="dialog" aria-label="식집사 커뮤니티">
+            <!-- 1. 커뮤니티 헤더 (타이틀 & 닫기) -->
+            <div class="community-header">
+                <div class="flex items-center gap-2.5">
+                    <span class="text-2xl animate-bounce" style="animation-duration: 2.5s">🌿</span>
+                    <div>
+                        <h2 class="text-lg font-black tracking-tight flex items-center gap-2" style="color: var(--text);">
+                            <span>식집사 커뮤니티</span>
+                            <span class="text-[10px] px-2 py-0.5 rounded-full font-bold bg-emerald-500 text-white">LIVE</span>
+                        </h2>
+                        <p class="text-xs" style="color: var(--muted);">초록빛 일상을 공유하고 친구들과 소통해요 💬</p>
+                    </div>
+                </div>
+                <button onclick="closeCommunityView()" class="global-btn" aria-label="커뮤니티 닫기" style="font-size: 1.2rem; width: 36px; height: 36px; border-radius: 50%;">✕</button>
+            </div>
+
+            <!-- 2. 상단 커뮤니티 바 (필터, 정렬, 친구, 글쓰기 순서대로 배치) -->
+            <div class="community-control-bar">
+                <!-- [1] 필터 -->
+                <div class="community-filter-group">
+                    <select id="community-tag-filter" onchange="onCommunityFilterChange()" class="community-select" aria-label="태그 필터">
+                        <option value="전체">🏷️ 전체 글</option>
+                        <option value="자랑">🌿 식물 자랑</option>
+                        <option value="질문">❓ 질문/Q&A</option>
+                        <option value="나눔">🎁 식물 나눔</option>
+                        <option value="자유">💬 자유/일상</option>
+                    </select>
+                </div>
+
+                <!-- [2] 정렬 -->
+                <div class="community-sort-group">
+                    <select id="community-sort-select" onchange="onCommunitySortChange()" class="community-select" aria-label="정렬">
+                        <option value="latest">⏱️ 최신순</option>
+                        <option value="popular">❤️ 인기순</option>
+                        <option value="friends">🌟 친구글만</option>
+                    </select>
+                </div>
+
+                <div class="flex-1"></div>
+
+                <!-- [3] 친구 -->
+                <button type="button" onclick="openCommunityFriendsModal()" class="community-action-btn friend-btn" aria-label="친구 관리">
+                    <span>👥</span>
+                    <span class="font-bold text-xs">친구</span>
+                    <span id="community-friend-count" class="friend-count-badge">0</span>
+                </button>
+
+                <!-- [4] 글쓰기 -->
+                <button type="button" onclick="openCommunityWriteModal()" class="community-action-btn write-btn" aria-label="글쓰기">
+                    <span>✏️</span>
+                    <span class="font-bold text-xs">글쓰기</span>
+                </button>
+            </div>
+
+            <!-- 3. 실시간 피드 영역 -->
+            <div id="community-feed-container" class="community-feed-scroll">
+                <div id="community-loading" class="py-12 text-center text-sm" style="color: var(--muted);">
+                    <span class="text-3xl block animate-spin mb-2">🌱</span>
+                    피드를 불러오는 중입니다...
+                </div>
+                <div id="community-feed-list" class="space-y-4">
+                    <!-- 피드 카드들이 동적으로 삽입됩니다 -->
+                </div>
+                <div id="community-empty-feed" class="hidden py-16 text-center">
+                    <span class="text-5xl block mb-3">🪴</span>
+                    <p class="font-bold text-base" style="color: var(--text);">아직 등록된 글이 없어요!</p>
+                    <p class="text-xs mt-1" style="color: var(--muted);">첫 번째 식물 소식을 들려주세요 (+5 리프 지급 🎉)</p>
+                    <button type="button" onclick="openCommunityWriteModal()" class="submit-btn mt-4 px-5 py-2 text-xs">첫 글 작성하기</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ===================== 글쓰기 모달 ===================== -->
+    <div id="community-write-modal" onclick="closeCommunityWriteOnBackdrop(event)" class="community-submodal-overlay">
+        <div class="modal-panel write-panel" role="dialog" aria-label="새 글 작성">
+            <div class="flex items-center justify-between pb-3 border-b" style="border-color: var(--card-border);">
+                <div class="flex items-center gap-2">
+                    <span class="text-xl">✏️</span>
+                    <h3 class="font-extrabold text-base" style="color: var(--text);">식물 소식 나누기</h3>
+                </div>
+                <button onclick="closeCommunityWriteModal()" class="global-btn" aria-label="닫기">✕</button>
+            </div>
+
+            <form id="community-write-form" onsubmit="handleCommunityWriteSubmit(event)" class="space-y-3 mt-3">
+                <div class="flex items-center gap-2">
+                    <span class="text-xs font-bold" style="color: var(--muted);">카테고리:</span>
+                    <select id="write-post-tag" class="community-select text-xs py-1">
+                        <option value="자랑">🌿 식물 자랑</option>
+                        <option value="질문">❓ 질문/Q&A</option>
+                        <option value="나눔">🎁 나눔</option>
+                        <option value="자유" selected>💬 자유/일상</option>
+                    </select>
+                </div>
+
+                <div>
+                    <textarea id="write-post-content" rows="4" maxlength="1000" class="w-full p-3 rounded-2xl text-sm focus:outline-none"
+                        placeholder="내 식물의 근황, 질문, 소소한 팁을 자유롭게 나눠보세요! 🌿&#10;(사진이나 움직이는 GIF도 함께 올릴 수 있어요!)"
+                        style="background: var(--bg); color: var(--text); border: 1px solid var(--card-border);" required></textarea>
+                    <div class="flex justify-between items-center text-[11px] px-1 mt-1" style="color: var(--muted);">
+                        <span>🤖 Gemini AI 실시간 클린 피드 검토 작동 중</span>
+                        <span id="write-char-count">0 / 1000</span>
+                    </div>
+                </div>
+
+                <!-- 사진 / GIF 첨부 영역 -->
+                <div class="space-y-2">
+                    <div class="flex items-center gap-2">
+                        <label class="media-upload-btn cursor-pointer">
+                            <input type="file" id="write-post-file" accept="image/*,.gif" class="hidden" onchange="handleCommunityMediaSelect(event)">
+                            <span>📸 사진 / GIF 첨부</span>
+                        </label>
+                        <span class="text-[11px]" style="color: var(--muted);">움직이는 GIF와 사진 파일(JPG, PNG, GIF) 지원</span>
+                    </div>
+
+                    <!-- 이미지 미리보기 -->
+                    <div id="write-media-preview-box" class="hidden relative rounded-2xl overflow-hidden border max-h-48 flex items-center justify-center"
+                         style="background: rgba(0,0,0,0.05); border-color: var(--card-border);">
+                        <img id="write-media-preview-img" src="" alt="첨부 미리보기" class="max-h-48 object-contain">
+                        <button type="button" onclick="clearCommunityMediaPreview()" class="absolute top-2 right-2 bg-black/60 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs hover:bg-black/80">✕</button>
+                        <span id="write-media-preview-badge" class="absolute bottom-2 left-2 bg-black/60 text-white text-[10px] px-2 py-0.5 rounded-full font-bold uppercase">IMAGE</span>
+                    </div>
+                </div>
+
+                <div class="flex items-center justify-end gap-2 pt-2 border-t" style="border-color: var(--card-border);">
+                    <button type="button" onclick="closeCommunityWriteModal()" class="global-btn text-xs px-4 py-2">취소</button>
+                    <button type="submit" id="write-submit-btn" class="submit-btn text-xs px-5 py-2 font-bold flex items-center gap-1.5"
+                        style="background: linear-gradient(135deg, #059669, #10b981);">
+                        <span>🚀 등록하기 (+5 🍃)</span>
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- ===================== 친구 관리 모달 ===================== -->
+    <div id="community-friends-modal" onclick="closeCommunityFriendsOnBackdrop(event)" class="community-submodal-overlay">
+        <div class="modal-panel friends-panel" role="dialog" aria-label="친구 관리">
+            <div class="flex items-center justify-between pb-3 border-b" style="border-color: var(--card-border);">
+                <div class="flex items-center gap-2">
+                    <span class="text-xl">👥</span>
+                    <h3 class="font-extrabold text-base" style="color: var(--text);">식물 친구 관리</h3>
+                </div>
+                <button onclick="closeCommunityFriendsModal()" class="global-btn" aria-label="닫기">✕</button>
+            </div>
+
+            <!-- 친구 추가 폼 -->
+            <div class="mt-4 p-3.5 rounded-2xl" style="background: var(--bg); border: 1px solid var(--card-border);">
+                <p class="text-xs font-bold mb-1.5" style="color: var(--text);">➕ 친구 추가하기</p>
+                <form onsubmit="handleCommunityAddFriend(event)" class="flex gap-2">
+                    <input type="email" id="friend-add-email" placeholder="친구의 계정 이메일 입력..." class="flex-1 p-2 rounded-xl text-xs"
+                        style="background: var(--card-bg); color: var(--text); border: 1px solid var(--card-border);" required>
+                    <button type="submit" class="submit-btn text-xs px-3.5 py-2 shrink-0 font-bold">친구 추가</button>
+                </form>
+                <p class="text-[10px] mt-1.5" style="color: var(--muted);">친구를 맺으면 친구의 새 글이 피드 최상단에 🌟 별빛 배지와 함께 뜹니다!</p>
+            </div>
+
+            <!-- 내 친구 목록 -->
+            <div class="mt-4">
+                <p class="text-xs font-bold mb-2 flex items-center justify-between" style="color: var(--text);">
+                    <span>🌱 내 친구 목록</span>
+                    <span id="friends-list-count" class="text-xs text-emerald-600 font-bold">0명</span>
+                </p>
+                <div id="community-friends-list" class="max-h-56 overflow-y-auto space-y-2 pr-1">
+                    <!-- 친구 목록 카드 삽입 -->
+                </div>
+            </div>
+        </div>
     </div>
 
     <!-- ===================== 나의 식물 도감 모달 ===================== -->
