@@ -1,4 +1,4 @@
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, List
 from pydantic import BaseModel
 
 class SearchRequest(BaseModel):
@@ -13,6 +13,7 @@ class ProfileUpdateRequest(BaseModel):
     nickname: Optional[str] = None
     avatar_emoji: Optional[str] = None
     title: Optional[str] = None
+    owned_items: Optional[List[str]] = None
 
 class ProfileSyncRequest(BaseModel):
     nickname: Optional[str] = None
@@ -21,6 +22,7 @@ class ProfileSyncRequest(BaseModel):
     leaf_balance: Optional[int] = None
     streak_count: Optional[int] = None
     last_checkin_date: Optional[str] = None
+    owned_items: Optional[List[str]] = None
 
 class BuyItemRequest(BaseModel):
     item_id: str

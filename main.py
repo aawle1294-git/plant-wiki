@@ -1648,14 +1648,24 @@ async def post_shop_buy(payload: BuyItemRequest, request: Request):
     # 리프 차감 트랜잭션 기록
     new_balance = _add_leaf_transaction(user["token"], user["id"], -payload.price, f"buy_item:{payload.item_id}")
     
-    # 아바타 또는 칭호 업데이트
-    updates = {}
+    # 아바타 또는 칭호 및 소유 아이템 목록 업데이트
+    updates = {"leaf_balance": new_balance}
     if payload.item_type == "title" or payload.title:
         updates["title"] = payload.title or payload.item_id
     elif payload.emoji:
         updates["avatar_emoji"] = payload.emoji
 
-    updated_prof = _update_profile(user["token"], user["id"], updates) if updates else prof
+    cur_owned = prof.get("owned_items") or []
+    if isinstance(cur_owned, str):
+        try:
+            cur_owned = json.loads(cur_owned)
+        except Exception:
+            cur_owned = []
+    if payload.item_id not in cur_owned:
+        cur_owned = list(cur_owned) + [payload.item_id]
+    updates["owned_items"] = cur_owned
+
+    updated_prof = _update_profile(user["token"], user["id"], updates)
     
     return {
         "status": "success", 

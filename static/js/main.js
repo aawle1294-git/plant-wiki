@@ -407,6 +407,12 @@
                 if (prev.avatar_emoji && prev.avatar_emoji !== '🌱' && (!merged.avatar_emoji || merged.avatar_emoji === '🌱')) {
                     merged.avatar_emoji = prev.avatar_emoji;
                 }
+                // 소유 아이템 목록 영구 보존
+                const localOwned = JSON.parse(localStorage.getItem('plantwiki_owned_items') || '[]');
+                const combinedOwned = Array.from(new Set([...(prev.owned_items || []), ...(profile.owned_items || []), ...localOwned]));
+                merged.owned_items = combinedOwned;
+                localStorage.setItem('plantwiki_owned_items', JSON.stringify(combinedOwned));
+
                 localStorage.setItem(PROFILE_CACHE_KEY, JSON.stringify(merged));
             } catch (e) {}
         }
@@ -427,19 +433,32 @@
                     if (data.status === 'success') {
                         let serverProfile = data.data;
 
+                        // 서버의 소유 아이템 목록과 로컬 아이템 병합
+                        if (serverProfile.owned_items && Array.isArray(serverProfile.owned_items)) {
+                            const localOwned = JSON.parse(localStorage.getItem('plantwiki_owned_items') || '[]');
+                            const mergedOwned = Array.from(new Set([...serverProfile.owned_items, ...localOwned]));
+                            localStorage.setItem('plantwiki_owned_items', JSON.stringify(mergedOwned));
+                            serverProfile.owned_items = mergedOwned;
+                        }
+
                         // 2. 서버가 재배포되거나 초기화된 상태(기본 리프 50 등)이고, 로컬에 더 많은 정보가 있다면 자동 복구 동기화
-                        if (cached && (
+                        const localOwned = JSON.parse(localStorage.getItem('plantwiki_owned_items') || '[]');
+                        const shouldSync = cached && (
                             (cached.leaf_balance && cached.leaf_balance > (serverProfile.leaf_balance || 0)) ||
                             (cached.streak_count && cached.streak_count > (serverProfile.streak_count || 1)) ||
                             (cached.title && cached.title !== '새싹' && serverProfile.title === '새싹') ||
                             (cached.nickname && cached.nickname !== '새싹 식집사' && serverProfile.nickname === '새싹 식집사') ||
-                            (cached.avatar_emoji && cached.avatar_emoji !== '🌱' && serverProfile.avatar_emoji === '🌱')
-                        )) {
+                            (cached.avatar_emoji && cached.avatar_emoji !== '🌱' && serverProfile.avatar_emoji === '🌱') ||
+                            (localOwned.length > (serverProfile.owned_items ? serverProfile.owned_items.length : 0))
+                        );
+
+                        if (shouldSync) {
                             try {
+                                const syncPayload = { ...cached, owned_items: localOwned };
                                 const syncRes = await fetch('/api/profile/sync', {
                                     method: 'POST',
                                     headers: { ...authHeaders(), 'Content-Type': 'application/json' },
-                                    body: JSON.stringify(cached)
+                                    body: JSON.stringify(syncPayload)
                                 });
                                 if (syncRes.ok) {
                                     const syncData = await syncRes.json();

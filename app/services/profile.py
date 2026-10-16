@@ -14,7 +14,10 @@ def ensure_profile(token: str, user_id: str, email: str = "") -> Dict[str, Any]:
         try:
             res = user_client(token).table("profiles").select("*").eq("id", user_id).execute()
             if res.data and len(res.data) > 0:
-                return res.data[0]
+                prof = res.data[0]
+                if prof.get("owned_items") is None:
+                    prof["owned_items"] = []
+                return prof
             now_iso = datetime.now().isoformat()
             new_profile = {
                 "id": user_id,
@@ -25,6 +28,7 @@ def ensure_profile(token: str, user_id: str, email: str = "") -> Dict[str, Any]:
                 "leaf_balance": 50,
                 "streak_count": 1,
                 "last_checkin_date": None,
+                "owned_items": [],
                 "created_at": now_iso,
                 "updated_at": now_iso,
             }
@@ -38,7 +42,10 @@ def ensure_profile(token: str, user_id: str, email: str = "") -> Dict[str, Any]:
             }
             user_client(token).table("leaf_transactions").insert(tx).execute()
             if ins_res.data and len(ins_res.data) > 0:
-                return ins_res.data[0]
+                prof = ins_res.data[0]
+                if prof.get("owned_items") is None:
+                    prof["owned_items"] = []
+                return prof
             return new_profile
         except Exception as e:
             logger.warning("Supabase profile ensure error: %s", e)
@@ -55,6 +62,7 @@ def ensure_profile(token: str, user_id: str, email: str = "") -> Dict[str, Any]:
             "leaf_balance": 50,
             "streak_count": 1,
             "last_checkin_date": None,
+            "owned_items": [],
             "created_at": now_iso,
             "updated_at": now_iso,
         }
@@ -67,7 +75,10 @@ def ensure_profile(token: str, user_id: str, email: str = "") -> Dict[str, Any]:
             "created_at": now_iso,
         })
         _save_memory()
-    return MEMORY_PROFILES[user_id]
+    prof = MEMORY_PROFILES[user_id]
+    if prof.get("owned_items") is None:
+        prof["owned_items"] = []
+    return prof
 
 
 def update_profile(token: str, user_id: str, updates: Dict[str, Any]) -> Dict[str, Any]:
@@ -77,7 +88,10 @@ def update_profile(token: str, user_id: str, updates: Dict[str, Any]) -> Dict[st
         try:
             res = user_client(token).table("profiles").update(updates).eq("id", user_id).execute()
             if res.data and len(res.data) > 0:
-                return res.data[0]
+                prof = res.data[0]
+                if prof.get("owned_items") is None:
+                    prof["owned_items"] = []
+                return prof
         except Exception as e:
             logger.warning("Supabase profile update error: %s", e)
     # 인메모리 폴백
@@ -133,6 +147,20 @@ def sync_profile(token: str, user_id: str, client_data: Dict[str, Any]) -> Dict[
     client_checkin = client_data.get("last_checkin_date")
     if client_checkin and not prof.get("last_checkin_date"):
         updates["last_checkin_date"] = client_checkin
+
+    # 7. 소유 아이템 목록 (상점 구매 내역) 안전하게 병합
+    client_owned = client_data.get("owned_items")
+    if client_owned and isinstance(client_owned, list):
+        cur_owned = prof.get("owned_items") or []
+        if isinstance(cur_owned, str):
+            try:
+                import json
+                cur_owned = json.loads(cur_owned)
+            except Exception:
+                cur_owned = []
+        merged_owned = list(dict.fromkeys(cur_owned + [str(x) for x in client_owned]))
+        if len(merged_owned) > len(cur_owned):
+            updates["owned_items"] = merged_owned
 
     if updates:
         prof = update_profile(token, user_id, updates)
