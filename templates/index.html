@@ -47,7 +47,7 @@
             document.documentElement.dataset.theme = t;
         })();
     </script>
-    <link rel="stylesheet" href="/static/css/style.css?v=20261011_4">
+    <link rel="stylesheet" href="/static/css/style.css?v=20261017_community_fix">
 </head>
 <body>
 
@@ -422,7 +422,8 @@
     </div>
 
     <!-- ===================== 식집사 커뮤니티 모달 (풀스크린 뷰) ===================== -->
-    <div id="community-modal" onclick="closeCommunityOnBackdrop(event)" class="community-modal-overlay">
+    <div id="community-modal" onclick="closeCommunityOnBackdrop(event)" class="community-modal-overlay"
+         style="display:none; position:fixed; inset:0; z-index:9990; background:rgba(0,0,0,0.6); backdrop-filter:blur(8px); align-items:center; justify-content:center; padding:16px;">
         <div class="community-panel" role="dialog" aria-label="식집사 커뮤니티">
             <!-- 1. 커뮤니티 헤더 (타이틀 & 닫기) -->
             <div class="community-header">
@@ -497,7 +498,8 @@
     </div>
 
     <!-- ===================== 글쓰기 모달 ===================== -->
-    <div id="community-write-modal" onclick="closeCommunityWriteOnBackdrop(event)" class="community-submodal-overlay">
+    <div id="community-write-modal" onclick="closeCommunityWriteOnBackdrop(event)" class="community-submodal-overlay"
+         style="display:none; position:fixed; inset:0; z-index:9995; background:rgba(0,0,0,0.65); backdrop-filter:blur(6px); align-items:center; justify-content:center; padding:16px;">
         <div class="modal-panel write-panel" role="dialog" aria-label="새 글 작성">
             <div class="flex items-center justify-between pb-3 border-b" style="border-color: var(--card-border);">
                 <div class="flex items-center gap-2">
@@ -559,7 +561,8 @@
     </div>
 
     <!-- ===================== 친구 관리 모달 ===================== -->
-    <div id="community-friends-modal" onclick="closeCommunityFriendsOnBackdrop(event)" class="community-submodal-overlay">
+    <div id="community-friends-modal" onclick="closeCommunityFriendsOnBackdrop(event)" class="community-submodal-overlay"
+         style="display:none; position:fixed; inset:0; z-index:9995; background:rgba(0,0,0,0.65); backdrop-filter:blur(6px); align-items:center; justify-content:center; padding:16px;">
         <div class="modal-panel friends-panel" role="dialog" aria-label="친구 관리">
             <div class="flex items-center justify-between pb-3 border-b" style="border-color: var(--card-border);">
                 <div class="flex items-center gap-2">

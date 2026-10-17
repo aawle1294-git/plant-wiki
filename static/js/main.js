@@ -2334,6 +2334,7 @@
             const modal = document.getElementById('community-modal');
             if (!modal) return;
             modal.classList.add('open');
+            modal.style.display = 'flex';
             document.body.style.overflow = 'hidden';
 
             // 친구 목록 및 피드 로드
@@ -2343,7 +2344,10 @@
 
         function closeCommunityView() {
             const modal = document.getElementById('community-modal');
-            if (modal) modal.classList.remove('open');
+            if (modal) {
+                modal.classList.remove('open');
+                modal.style.display = 'none';
+            }
             document.body.style.overflow = '';
         }
 
@@ -2541,7 +2545,10 @@
                 return;
             }
             const modal = document.getElementById('community-write-modal');
-            if (modal) modal.classList.add('open');
+            if (modal) {
+                modal.classList.add('open');
+                modal.style.display = 'flex';
+            }
             clearCommunityMediaPreview();
             const textarea = document.getElementById('write-post-content');
             if (textarea) {
@@ -2552,7 +2559,10 @@
 
         function closeCommunityWriteModal() {
             const modal = document.getElementById('community-write-modal');
-            if (modal) modal.classList.remove('open');
+            if (modal) {
+                modal.classList.remove('open');
+                modal.style.display = 'none';
+            }
             clearCommunityMediaPreview();
         }
 
@@ -2660,13 +2670,19 @@
                 return;
             }
             const modal = document.getElementById('community-friends-modal');
-            if (modal) modal.classList.add('open');
+            if (modal) {
+                modal.classList.add('open');
+                modal.style.display = 'flex';
+            }
             loadCommunityFriendsList();
         }
 
         function closeCommunityFriendsModal() {
             const modal = document.getElementById('community-friends-modal');
-            if (modal) modal.classList.remove('open');
+            if (modal) {
+                modal.classList.remove('open');
+                modal.style.display = 'none';
+            }
         }
 
         function closeCommunityFriendsOnBackdrop(e) {
