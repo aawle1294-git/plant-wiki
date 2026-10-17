@@ -47,7 +47,7 @@
             document.documentElement.dataset.theme = t;
         })();
     </script>
-    <link rel="stylesheet" href="/static/css/style.css?v=20261017_community_report">
+    <link rel="stylesheet" href="/static/css/style.css?v=20261017_ratio_fix">
 </head>
 <body>
 
@@ -437,7 +437,12 @@
                         <p class="text-xs" style="color: var(--muted);">초록빛 일상을 공유하고 친구들과 소통해요 💬</p>
                     </div>
                 </div>
-                <button onclick="closeCommunityView()" class="global-btn" aria-label="커뮤니티 닫기" style="font-size: 1.2rem; width: 36px; height: 36px; border-radius: 50%;">✕</button>
+                <button onclick="closeCommunityView()" class="modal-close-btn" aria-label="커뮤니티 닫기">
+                    <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <line x1="2" y1="2" x2="12" y2="12"></line>
+                        <line x1="12" y1="2" x2="2" y2="12"></line>
+                    </svg>
+                </button>
             </div>
 
             <!-- 2. 상단 커뮤니티 바 (필터, 정렬, 친구, 글쓰기 순서대로 배치) -->
@@ -506,7 +511,12 @@
                     <span class="text-xl">✏️</span>
                     <h3 class="font-extrabold text-base" style="color: var(--text);">식물 소식 나누기</h3>
                 </div>
-                <button onclick="closeCommunityWriteModal()" class="global-btn" aria-label="닫기">✕</button>
+                <button onclick="closeCommunityWriteModal()" class="modal-close-btn" aria-label="닫기">
+                    <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <line x1="2" y1="2" x2="12" y2="12"></line>
+                        <line x1="12" y1="2" x2="2" y2="12"></line>
+                    </svg>
+                </button>
             </div>
 
             <form id="community-write-form" onsubmit="handleCommunityWriteSubmit(event)" class="space-y-3 mt-3">
@@ -569,7 +579,12 @@
                     <span class="text-xl">👥</span>
                     <h3 class="font-extrabold text-base" style="color: var(--text);">식물 친구 관리</h3>
                 </div>
-                <button onclick="closeCommunityFriendsModal()" class="global-btn" aria-label="닫기">✕</button>
+                <button onclick="closeCommunityFriendsModal()" class="modal-close-btn" aria-label="닫기">
+                    <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <line x1="2" y1="2" x2="12" y2="12"></line>
+                        <line x1="12" y1="2" x2="2" y2="12"></line>
+                    </svg>
+                </button>
             </div>
 
             <!-- 친구 추가 폼 -->
@@ -605,7 +620,12 @@
                     <span class="text-xl">🚨</span>
                     <h3 class="font-extrabold text-base text-rose-600 dark:text-rose-400">게시글 신고하기</h3>
                 </div>
-                <button onclick="closeCommunityReportModal()" class="global-btn" aria-label="닫기">✕</button>
+                <button onclick="closeCommunityReportModal()" class="modal-close-btn" aria-label="닫기">
+                    <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <line x1="2" y1="2" x2="12" y2="12"></line>
+                        <line x1="12" y1="2" x2="2" y2="12"></line>
+                    </svg>
+                </button>
             </div>
 
             <div class="mt-3">
@@ -662,7 +682,12 @@
                 <h3 class="font-extrabold text-lg flex items-center gap-2">
                     📚 나의 식물 도감 <span id="history-badge" class="text-[10px] bg-emerald-500 text-white px-2 py-0.5 rounded-full">0</span>
                 </h3>
-                <button onclick="closeHistoryModal()" class="global-btn" aria-label="도감 닫기">✕</button>
+                <button onclick="closeHistoryModal()" class="modal-close-btn" aria-label="도감 닫기">
+                    <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <line x1="2" y1="2" x2="12" y2="12"></line>
+                        <line x1="12" y1="2" x2="2" y2="12"></line>
+                    </svg>
+                </button>
             </div>
             <div id="history-timeline" class="overflow-y-auto space-y-2 pr-1" style="max-height: 56vh"></div>
             <div id="history-empty" class="text-center py-8">
@@ -694,7 +719,12 @@
         <div class="modal-panel auth-panel">
             <div class="flex items-center justify-between">
                 <h3 class="font-extrabold text-lg flex items-center gap-2" id="auth-mode-title">🔐 로그인</h3>
-                <button onclick="closeAuth()" class="global-btn" aria-label="로그인 닫기">✕</button>
+                <button onclick="closeAuth()" class="modal-close-btn" aria-label="로그인 닫기">
+                    <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <line x1="2" y1="2" x2="12" y2="12"></line>
+                        <line x1="12" y1="2" x2="2" y2="12"></line>
+                    </svg>
+                </button>
             </div>
             <div id="auth-form-wrap">
                 <!-- 구글 간편 로그인 -->
@@ -735,7 +765,12 @@
                 <h3 class="font-extrabold text-lg flex items-center gap-2">
                     <span>🌱</span> 나의 프로필 & 연속학습
                 </h3>
-                <button onclick="closeProfileModal()" class="global-btn" aria-label="프로필 닫기">✕</button>
+                <button onclick="closeProfileModal()" class="modal-close-btn" aria-label="프로필 닫기">
+                    <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <line x1="2" y1="2" x2="12" y2="12"></line>
+                        <line x1="12" y1="2" x2="2" y2="12"></line>
+                    </svg>
+                </button>
             </div>
 
             <!-- 아바타 & 닉네임 카드 -->
@@ -837,7 +872,12 @@
                     <span class="shop-leaf-chip font-bold text-sm px-3 py-1 rounded-full">
                         내 리프: 🍃 <span id="shop-my-leaves">0</span>
                     </span>
-                    <button onclick="closeShopModal()" class="global-btn" aria-label="상점 닫기">✕</button>
+                    <button onclick="closeShopModal()" class="modal-close-btn" aria-label="상점 닫기">
+                        <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <line x1="2" y1="2" x2="12" y2="12"></line>
+                            <line x1="12" y1="2" x2="2" y2="12"></line>
+                        </svg>
+                    </button>
                 </div>
             </div>
             
@@ -1006,7 +1046,12 @@
         <div class="modal-panel settings-panel">
             <div class="settings-modal-header">
                 <h3 class="flex items-center gap-2">⚙️ 환경설정</h3>
-                <button onclick="closeSettings()" class="global-btn" aria-label="설정 닫기">✕</button>
+                <button onclick="closeSettings()" class="modal-close-btn" aria-label="설정 닫기">
+                    <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <line x1="2" y1="2" x2="12" y2="12"></line>
+                        <line x1="12" y1="2" x2="2" y2="12"></line>
+                    </svg>
+                </button>
             </div>
 
             <div class="settings-modal-body">
@@ -1235,7 +1280,12 @@
                 <h3 style="font-size:1.1rem; font-weight:800; color:var(--text)">📋 잠깐, 1분만 도와주세요! 🌿</h3>
                 <p style="font-size:0.75rem; color:var(--muted); margin-top:2px">Plant!p가 일반 검색보다 더 나은지 알려주세요</p>
             </div>
-            <button onclick="closeSurveyModal()" class="global-btn" aria-label="설문 닫기" style="font-size:1.1rem;">✕</button>
+            <button onclick="closeSurveyModal()" class="modal-close-btn" aria-label="설문 닫기">
+                <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <line x1="2" y1="2" x2="12" y2="12"></line>
+                    <line x1="12" y1="2" x2="2" y2="12"></line>
+                </svg>
+            </button>
         </div>
         <!-- 바디 -->
         <div style="padding:16px 20px 20px;" id="survey-popup-body">
@@ -1324,7 +1374,12 @@
     <div class="modal-panel quiz-panel">
         <div class="quiz-modal-header">
             <h3 class="flex items-center gap-2">🌱 3초 식물 MBTI 퀴즈</h3>
-            <button onclick="closeQuizModal()" class="global-btn" aria-label="퀴즈 닫기">✕</button>
+            <button onclick="closeQuizModal()" class="modal-close-btn" aria-label="퀴즈 닫기">
+                <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <line x1="2" y1="2" x2="12" y2="12"></line>
+                    <line x1="12" y1="2" x2="2" y2="12"></line>
+                </svg>
+            </button>
         </div>
 
         <div class="quiz-modal-body">
@@ -1492,7 +1547,7 @@
     </footer>
 
     <!-- JavaScript Client Application Logic -->
-    <script src="/static/js/main.js?v=20261017_community_report"></script>
+    <script src="/static/js/main.js?v=20261017_ratio_fix"></script>
 
     <!-- PWA: Service Worker 등록 (오프라인 부팅 & 앱 설치 지원) -->
     <script>
