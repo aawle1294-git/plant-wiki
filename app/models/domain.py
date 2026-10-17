@@ -76,5 +76,10 @@ class CommunityPostCreate(BaseModel):
     media_type: Optional[str] = None  # 'image' | 'gif'
 
 class FriendAddRequest(BaseModel):
-    friend_email: str
+    friend_email: Optional[str] = None
+    friend_id: Optional[str] = None
+
+class PostReportRequest(BaseModel):
+    reason: str
+    details: Optional[str] = None
 

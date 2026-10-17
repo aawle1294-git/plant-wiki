@@ -2025,3 +2025,108 @@
             background: var(--tile-em-bg);
         }
 
+        /* 피드 내 친구 추가 & 상태 뱃지 & 신고 버튼 */
+        .feed-friend-status {
+            display: inline-flex;
+            align-items: center;
+            gap: 2px;
+            font-size: 0.65rem;
+            font-weight: 700;
+            padding: 1px 7px;
+            border-radius: 9999px;
+            background: rgba(16, 185, 129, 0.12);
+            color: #059669;
+            border: 1px solid rgba(16, 185, 129, 0.25);
+        }
+
+        .feed-add-friend-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 3px;
+            font-size: 0.65rem;
+            font-weight: 800;
+            padding: 2px 8px;
+            border-radius: 9999px;
+            background: linear-gradient(135deg, #059669, #10b981);
+            color: #fff;
+            box-shadow: 0 2px 6px rgba(16, 185, 129, 0.25);
+            cursor: pointer;
+            border: none;
+            transition: all 0.18s ease;
+        }
+        .feed-add-friend-btn:hover {
+            transform: scale(1.04);
+            box-shadow: 0 3px 8px rgba(16, 185, 129, 0.35);
+        }
+        .feed-add-friend-btn:active {
+            transform: scale(0.96);
+        }
+
+        .feed-report-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 3px;
+            font-size: 0.72rem;
+            font-weight: 600;
+            padding: 2px 7px;
+            border-radius: 8px;
+            color: #f43f5e;
+            background: transparent;
+            cursor: pointer;
+            border: 1px solid transparent;
+            transition: all 0.18s ease;
+        }
+        .feed-report-btn:hover {
+            background: rgba(244, 63, 94, 0.1);
+            border-color: rgba(244, 63, 94, 0.2);
+            color: #e11d48;
+        }
+        .feed-report-btn:active {
+            transform: scale(0.95);
+        }
+
+        /* 신고 모달 스타일 */
+        .report-panel {
+            max-width: 440px;
+            width: 94%;
+            border-radius: 24px;
+            background: var(--card-bg);
+            border: 1px solid var(--card-border);
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.35);
+            animation: communitySlideUp 0.25s ease-out;
+            padding: 20px;
+        }
+
+        .report-option-label {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 9px 12px;
+            border-radius: 12px;
+            border: 1px solid var(--card-border);
+            background: var(--bg);
+            font-size: 0.78rem;
+            font-weight: 600;
+            color: var(--text);
+            cursor: pointer;
+            transition: all 0.15s ease;
+        }
+        .report-option-label:hover {
+            border-color: #f43f5e;
+            background: rgba(244, 63, 94, 0.05);
+        }
+        .report-option-label input[type="radio"] {
+            accent-color: #f43f5e;
+        }
+
+        .reported-placeholder {
+            padding: 14px 18px;
+            border-radius: 16px;
+            background: rgba(0, 0, 0, 0.03);
+            border: 1px dashed var(--card-border);
+            text-align: center;
+            font-size: 0.75rem;
+            color: var(--muted);
+        }
+
+

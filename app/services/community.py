@@ -11,6 +11,7 @@ from app.services.memory import (
     MEMORY_COMMUNITY_POSTS,
     MEMORY_FRIENDSHIPS,
     MEMORY_COMMUNITY_LIKES,
+    MEMORY_COMMUNITY_REPORTS,
     MEMORY_PROFILES,
     _save_memory,
 )
@@ -321,39 +322,67 @@ def get_user_friends(token: str, user_id: str) -> List[Dict[str, Any]]:
     return friends
 
 
-def add_friend_by_email(token: str, user_id: str, friend_email: str) -> Dict[str, Any]:
-    """이메일로 친구를 검색하여 친구로 추가합니다."""
-    clean_email = friend_email.strip().lower()
-    if not clean_email:
-        raise HTTPException(status_code=400, detail="친구의 이메일을 입력해 주세요.")
+def add_friend_by_identifier(
+    token: str, user_id: str, friend_email: Optional[str] = None, friend_id: Optional[str] = None
+) -> Dict[str, Any]:
+    """이메일 또는 유저 ID로 친구를 검색하여 친구로 추가합니다."""
+    if not friend_email and not friend_id:
+        raise HTTPException(status_code=400, detail="친구의 이메일 또는 유저 ID를 입력해 주세요.")
+
+    clean_email = (friend_email or "").strip().lower()
+    target_id = (friend_id or "").strip()
+
+    if target_id and target_id == str(user_id):
+        raise HTTPException(status_code=400, detail="자기 자신은 친구로 추가할 수 없어요! 🌿")
 
     # 1. 상대방 찾기
     friend_profile = None
     sb_client = get_supabase()
     if sb_client is not None:
         try:
-            res = user_client(token).table("profiles").select("*").eq("email", clean_email).execute()
-            if res.data and len(res.data) > 0:
-                friend_profile = res.data[0]
+            if target_id:
+                res = user_client(token).table("profiles").select("*").eq("id", target_id).execute()
+                if res.data and len(res.data) > 0:
+                    friend_profile = res.data[0]
+            if not friend_profile and clean_email:
+                res = user_client(token).table("profiles").select("*").eq("email", clean_email).execute()
+                if res.data and len(res.data) > 0:
+                    friend_profile = res.data[0]
         except Exception as e:
             logger.warning("Supabase find friend error: %s", e)
 
     # 인메모리 폴백 검색
     if not friend_profile:
-        for p in MEMORY_PROFILES.values():
-            if str(p.get("email", "")).lower() == clean_email:
-                friend_profile = p
+        if target_id and target_id in MEMORY_PROFILES:
+            friend_profile = MEMORY_PROFILES[target_id]
+        elif clean_email:
+            for p in MEMORY_PROFILES.values():
+                if str(p.get("email", "")).lower() == clean_email:
+                    friend_profile = p
+                    break
+
+    # 피드 포스트 작성자 중 검색 (폴백)
+    if not friend_profile and target_id:
+        for p in MEMORY_COMMUNITY_POSTS:
+            if str(p.get("user_id")) == target_id:
+                friend_profile = {
+                    "id": target_id,
+                    "email": p.get("author_email") or "friend@plantip.local",
+                    "nickname": p.get("author_nickname") or "식집사",
+                    "avatar_emoji": p.get("author_avatar") or "🌱",
+                    "title": p.get("author_title") or "새싹",
+                }
                 break
 
     if not friend_profile:
-        # 없는 유저면 안내
-        raise HTTPException(
-            status_code=404,
-            detail=f"'{clean_email}' 계정을 사용하는 식집사를 찾을 수 없습니다. 이메일을 다시 확인해 주세요! 🌱",
-        )
+        if clean_email:
+            detail_msg = f"'{clean_email}' 계정을 사용하는 식집사를 찾을 수 없습니다. 이메일을 다시 확인해 주세요! 🌱"
+        else:
+            detail_msg = "해당 식집사를 찾을 수 없습니다."
+        raise HTTPException(status_code=404, detail=detail_msg)
 
-    friend_id = str(friend_profile["id"])
-    if friend_id == str(user_id):
+    final_friend_id = str(friend_profile["id"])
+    if final_friend_id == str(user_id):
         raise HTTPException(status_code=400, detail="자기 자신은 친구로 추가할 수 없어요! 🌿")
 
     # 2. 친구 관계 등록
@@ -361,22 +390,27 @@ def add_friend_by_email(token: str, user_id: str, friend_email: str) -> Dict[str
         try:
             user_client(token).table("friendships").upsert({
                 "user_id": user_id,
-                "friend_id": friend_id,
+                "friend_id": final_friend_id,
                 "status": "accepted"
             }).execute()
         except Exception as e:
             logger.warning("Supabase add friendship error: %s", e)
 
     # 인메모리 등록
-    if friend_id not in MEMORY_FRIENDSHIPS[user_id]:
-        MEMORY_FRIENDSHIPS[user_id].append(friend_id)
+    if final_friend_id not in MEMORY_FRIENDSHIPS[user_id]:
+        MEMORY_FRIENDSHIPS[user_id].append(final_friend_id)
         _save_memory()
 
+    nickname = friend_profile.get("nickname") or "식집사"
     return {
         "status": "success",
-        "message": f"'{friend_profile.get('nickname', '식집사')}'님과 친구가 되었습니다! 🌟 이제 친구의 소식이 피드 최상단에 표시됩니다.",
+        "message": f"'{nickname}'님과 친구가 되었습니다! 🌟 이제 친구의 소식이 피드 최상단에 표시됩니다.",
         "friend": friend_profile,
     }
+
+
+def add_friend_by_email(token: str, user_id: str, friend_email: str) -> Dict[str, Any]:
+    return add_friend_by_identifier(token, user_id, friend_email=friend_email)
 
 
 def remove_friend(token: str, user_id: str, friend_id: str) -> bool:
@@ -392,3 +426,56 @@ def remove_friend(token: str, user_id: str, friend_id: str) -> bool:
         MEMORY_FRIENDSHIPS[user_id].remove(friend_id)
         _save_memory()
     return True
+
+
+def report_community_post(
+    token: str, user_id: str, post_id: str, reason: str, details: Optional[str] = None
+) -> Dict[str, Any]:
+    """
+    게시글을 신고합니다.
+    - 동일 사용자의 중복 신고 방지
+    - Supabase community_reports 저장 및 메모리 보관
+    """
+    clean_reason = (reason or "").strip()
+    if not clean_reason:
+        raise HTTPException(status_code=400, detail="신고 사유를 선택해 주세요.")
+
+    clean_details = (details or "").strip()
+    now_iso = datetime.now().isoformat()
+    report_id = str(uuid.uuid4())
+
+    # 중복 신고 체크 (인메모리)
+    for rep in MEMORY_COMMUNITY_REPORTS:
+        if str(rep.get("post_id")) == str(post_id) and str(rep.get("reporter_id")) == str(user_id):
+            return {
+                "status": "success",
+                "message": "이미 신고가 접수된 게시글입니다. 빠른 시일 내에 검토하겠습니다.",
+                "post_id": post_id,
+            }
+
+    report_item = {
+        "id": report_id,
+        "post_id": post_id,
+        "reporter_id": user_id,
+        "reason": clean_reason,
+        "details": clean_details,
+        "status": "pending",
+        "created_at": now_iso,
+    }
+
+    sb_client = get_supabase()
+    if sb_client is not None:
+        try:
+            user_client(token).table("community_reports").insert(report_item).execute()
+        except Exception as e:
+            logger.warning("Supabase community_reports insert error: %s. Using memory fallback.", e)
+
+    MEMORY_COMMUNITY_REPORTS.append(report_item)
+    _save_memory()
+
+    logger.info("Community post reported: post_id=%s, user_id=%s, reason=%s", post_id, user_id, clean_reason)
+    return {
+        "status": "success",
+        "message": "게시글 신고가 정상 접수되었습니다. 클린한 식물 커뮤니티를 위해 신속히 검토하겠습니다. 🚨",
+        "post_id": post_id,
+    }

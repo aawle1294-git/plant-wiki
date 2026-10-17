@@ -1937,7 +1937,9 @@ from app.services.community import (
     delete_community_post,
     get_user_friends,
     add_friend_by_email,
+    add_friend_by_identifier,
     remove_friend,
+    report_community_post,
 )
 
 @app.get("/api/community/posts")
@@ -1974,6 +1976,12 @@ async def api_toggle_community_like(post_id: str, request: Request):
     res = toggle_post_like(user["token"], user["id"], post_id)
     return res
 
+@app.post("/api/community/posts/{post_id}/report")
+async def api_report_community_post(post_id: str, payload: PostReportRequest, request: Request):
+    user = _get_current_user_or_fallback(request)
+    res = report_community_post(user["token"], user["id"], post_id, payload.reason, payload.details)
+    return res
+
 @app.get("/api/community/friends")
 async def api_get_community_friends(request: Request):
     user = _get_current_user_or_fallback(request)
@@ -1983,7 +1991,7 @@ async def api_get_community_friends(request: Request):
 @app.post("/api/community/friends/add")
 async def api_add_community_friend(payload: FriendAddRequest, request: Request):
     user = _get_current_user_or_fallback(request)
-    res = add_friend_by_email(user["token"], user["id"], payload.friend_email)
+    res = add_friend_by_identifier(user["token"], user["id"], friend_email=payload.friend_email, friend_id=payload.friend_id)
     return res
 
 @app.delete("/api/community/friends/{friend_id}")

@@ -2323,6 +2323,8 @@
         let communityAttachedMedia = null;
         let communityAttachedMediaType = null;
         let communityFriendsCount = 0;
+        let reportedPostIds = new Set();
+        let activeReportPostId = null;
 
         function openCommunityView() {
             // 커뮤니티는 로그인 필수
@@ -2418,6 +2420,18 @@
             posts.forEach(post => {
                 const card = document.createElement('div');
                 card.className = `feed-card ${post.is_friend ? 'is-friend-post' : ''}`;
+                card.id = `post-card-${post.id}`;
+
+                // 만약 사용자가 신고 접수한 글이면 가림 처리
+                if (reportedPostIds.has(post.id)) {
+                    card.innerHTML = `
+                        <div class="reported-placeholder">
+                            <span>🚨 신고가 접수되어 검토 중인 게시글입니다.</span>
+                        </div>
+                    `;
+                    container.appendChild(card);
+                    return;
+                }
 
                 // 작성 시간 포맷
                 let timeStr = '방금 전';
@@ -2449,8 +2463,23 @@
 
                 // 삭제 버튼 (본인 글일 때)
                 const deleteBtn = post.is_mine
-                    ? `<button type="button" onclick="handleDeleteCommunityPost('${post.id}')" class="text-xs text-red-500 hover:underline ml-2" title="게시글 삭제">삭제</button>`
+                    ? `<button type="button" onclick="handleDeleteCommunityPost('${post.id}')" class="text-xs text-red-500 hover:underline ml-1" title="게시글 삭제">삭제</button>`
                     : '';
+
+                // 신고 버튼 (본인 글이 아닐 때)
+                const reportBtn = !post.is_mine
+                    ? `<button type="button" onclick="openCommunityReportModal('${post.id}', '${escapeHtml(post.author_nickname || '식집사')}')" class="feed-report-btn" title="게시글 신고"><span>🚨</span>신고</button>`
+                    : '';
+
+                // 친구 추가 or 친구 상태 뱃지 (본인 글이 아닐 때)
+                let friendActionHtml = '';
+                if (!post.is_mine) {
+                    if (post.is_friend) {
+                        friendActionHtml = `<span class="feed-friend-status" title="내 식물 친구 🌿">💚 친구</span>`;
+                    } else {
+                        friendActionHtml = `<button type="button" onclick="handleAddFriendFromPost('${post.user_id}', '${escapeHtml(post.author_email || '')}', '${escapeHtml(post.author_nickname || '식집사')}')" class="feed-add-friend-btn" title="친구 추가"><span>➕</span>친구추가</button>`;
+                    }
+                }
 
                 // 태그 색상/텍스트
                 const tag = post.tag || '자유';
@@ -2464,17 +2493,19 @@
                         <div class="flex items-center gap-2.5">
                             <span class="text-2xl">${post.author_avatar || '🌱'}</span>
                             <div>
-                                <div class="flex items-center gap-1.5">
+                                <div class="flex items-center gap-1.5 flex-wrap">
                                     <span class="font-extrabold text-sm" style="color: var(--text);">${escapeHtml(post.author_nickname || '식집사')}</span>
                                     <span class="text-[10px] px-1.5 py-0.2 rounded-full font-bold" style="background: var(--tile-purple-bg); color: var(--tile-purple-tx);">${escapeHtml(post.author_title || '새싹')}</span>
                                     ${post.is_mine ? '<span class="text-[9px] bg-gray-200 dark:bg-gray-700 px-1 rounded text-muted">나</span>' : ''}
+                                    ${friendActionHtml}
                                 </div>
                                 <span class="text-[11px]" style="color: var(--muted);">${timeStr}</span>
                             </div>
                         </div>
-                        <div class="flex items-center gap-1">
+                        <div class="flex items-center gap-1.5">
                             <span class="text-[11px] font-bold px-2 py-0.5 rounded-lg ${tagColor}">#${escapeHtml(tag)}</span>
                             ${deleteBtn}
+                            ${reportBtn}
                         </div>
                     </div>
 
@@ -2771,6 +2802,111 @@
                 }
             } catch (e) {
                 showToast('삭제 실패', 'error');
+            }
+        }
+
+        async function handleAddFriendFromPost(friendId, friendEmail, friendNickname) {
+            if (!isLoggedIn()) {
+                showToast('로그인 후 친구를 추가할 수 있어요! 🌱', 'info');
+                openAuth();
+                return;
+            }
+
+            try {
+                const res = await fetch('/api/community/friends/add', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', ...authHeaders() },
+                    body: JSON.stringify({ friend_id: friendId, friend_email: friendEmail })
+                });
+                const data = await res.json();
+                if (!res.ok) throw new Error(data.detail || '친구 추가에 실패했습니다.');
+
+                showToast(data.message || `'${friendNickname}'님과 친구가 되었습니다! 🌟`, 'success');
+                loadCommunityFriendsCount();
+                loadCommunityPosts(); // 친구 글 최상단 재정렬
+            } catch (err) {
+                showToast(err.message, 'error');
+            }
+        }
+
+        // ===================== 게시글 신고 모달 컨트롤러 =====================
+        function openCommunityReportModal(postId, authorNickname) {
+            if (!isLoggedIn()) {
+                showToast('게시글을 신고하려면 로그인이 필요합니다! 🌱', 'info');
+                openAuth();
+                return;
+            }
+
+            activeReportPostId = postId;
+            const modal = document.getElementById('community-report-modal');
+            const authorSpan = document.getElementById('report-target-author');
+            const postIdInput = document.getElementById('report-post-id');
+            const detailsText = document.getElementById('report-details');
+
+            if (authorSpan) authorSpan.innerText = authorNickname || '식집사';
+            if (postIdInput) postIdInput.value = postId;
+            if (detailsText) detailsText.value = '';
+
+            const firstRadio = document.querySelector('input[name="report-reason"]');
+            if (firstRadio) firstRadio.checked = true;
+
+            if (modal) {
+                modal.classList.add('open');
+                modal.style.display = 'flex';
+            }
+        }
+
+        function closeCommunityReportModal() {
+            const modal = document.getElementById('community-report-modal');
+            if (modal) {
+                modal.classList.remove('open');
+                modal.style.display = 'none';
+            }
+            activeReportPostId = null;
+        }
+
+        function closeCommunityReportOnBackdrop(e) {
+            if (e.target && e.target.id === 'community-report-modal') {
+                closeCommunityReportModal();
+            }
+        }
+
+        async function handleCommunityReportSubmit(e) {
+            e.preventDefault();
+            const postId = document.getElementById('report-post-id')?.value || activeReportPostId;
+            if (!postId) return;
+
+            const selectedReason = document.querySelector('input[name="report-reason"]:checked')?.value || '기타 사유';
+            const details = document.getElementById('report-details')?.value || '';
+            const submitBtn = document.getElementById('report-submit-btn');
+
+            if (submitBtn) {
+                submitBtn.disabled = true;
+                submitBtn.innerText = '신고 접수 중...';
+            }
+
+            try {
+                const res = await fetch(`/api/community/posts/${postId}/report`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', ...authHeaders() },
+                    body: JSON.stringify({ reason: selectedReason, details: details.trim() })
+                });
+                const data = await res.json();
+                if (!res.ok) throw new Error(data.detail || '신고 처리에 실패했습니다.');
+
+                showToast(data.message || '신고가 접수되었습니다. 신속히 검토하겠습니다. 🚨', 'success');
+                reportedPostIds.add(postId);
+                closeCommunityReportModal();
+
+                // 피드 가림 처리
+                renderCommunityFeed(communityPostsData);
+            } catch (err) {
+                showToast(err.message || '신고 처리 중 오류가 발생했습니다.', 'error');
+            } finally {
+                if (submitBtn) {
+                    submitBtn.disabled = false;
+                    submitBtn.innerHTML = '<span>🚨 신고 접수하기</span>';
+                }
             }
         }
 

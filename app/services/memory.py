@@ -26,6 +26,7 @@ def _save_memory():
         "MEMORY_COMMUNITY_POSTS": MEMORY_COMMUNITY_POSTS,
         "MEMORY_FRIENDSHIPS": dict(MEMORY_FRIENDSHIPS),
         "MEMORY_COMMUNITY_LIKES": dict(MEMORY_COMMUNITY_LIKES),
+        "MEMORY_COMMUNITY_REPORTS": MEMORY_COMMUNITY_REPORTS,
     }
     try:
         with open(MEMORY_DB_FILE, "w", encoding="utf-8") as f:
@@ -49,4 +50,5 @@ MEMORY_WATERING_SCHEDULES: Dict[str, List[Dict[str, Any]]] = _convert_to_default
 MEMORY_COMMUNITY_POSTS: List[Dict[str, Any]] = _mem_data.get("MEMORY_COMMUNITY_POSTS", [])
 MEMORY_FRIENDSHIPS: Dict[str, List[str]] = _convert_to_defaultdict(_mem_data.get("MEMORY_FRIENDSHIPS", {}), list)
 MEMORY_COMMUNITY_LIKES: Dict[str, List[str]] = _convert_to_defaultdict(_mem_data.get("MEMORY_COMMUNITY_LIKES", {}), list)
+MEMORY_COMMUNITY_REPORTS: List[Dict[str, Any]] = _mem_data.get("MEMORY_COMMUNITY_REPORTS", [])
 
