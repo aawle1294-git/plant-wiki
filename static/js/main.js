@@ -1338,11 +1338,15 @@
             const seq = ++searchSeq;
             currentPlantName = plantName;
 
-            // 관리자 시크릿 키워드 "aaron"은 검색창에서 동작하지 않고 일반 차단 처리
+            // 관리자 시크릿 키워드 "aaron": 일반 식물 정보는 안 뜨고, 관리자 인증 탭이 바로 열리도록 처리!
             if (plantName && plantName.trim().toLowerCase() === 'aaron') {
-                showToast('🌱 검색 결과가 없습니다.', 'info');
+                const heroInput = document.getElementById('plant-input');
+                const topbarInput = document.getElementById('topbar-input');
+                if (heroInput) { heroInput.value = ''; heroInput.blur(); }
+                if (topbarInput) { topbarInput.value = ''; topbarInput.blur(); }
                 document.getElementById('loading-state')?.classList.add('hidden');
                 document.querySelectorAll('.submit-btn').forEach(b => b.disabled = false);
+                openAdminAuthModal();
                 return;
             }
 
@@ -2941,6 +2945,7 @@
         };
 
         // 1. 화면 시크릿 키 입력 감지 ("화면에 aaron을 치면... 검색창이나 다른 곳에서 aaron을 치면 안 뜨게!")
+        // 한글 입력기(IME: ㅁㅁㄱㅐㅜ) 및 영문(aaron), e.code(KeyA, KeyR, KeyO, KeyN) 완벽 대응
         window.addEventListener('keydown', (e) => {
             // Esc 키로 관리자 모달 닫기
             if (e.key === 'Escape') {
@@ -2961,30 +2966,69 @@
                 }
             }
 
-            // 중요: 검색창, 텍스트입력 등 입력 요소에 포커스되어 있을 때는 트리거 무시 ("검색창이나 다른 곳에서 aaron을 치면 안 뜨게!")
-            const activeEl = document.activeElement;
-            const isEditing = activeEl && (
-                activeEl.tagName === 'INPUT' ||
-                activeEl.tagName === 'TEXTAREA' ||
-                activeEl.tagName === 'SELECT' ||
-                activeEl.isContentEditable ||
-                Boolean(activeEl.closest('input, textarea, select, [contenteditable="true"]'))
-            );
-            if (isEditing) return;
-
             // 보조키(Ctrl, Alt, Meta) 제외
             if (e.ctrlKey || e.altKey || e.metaKey) return;
-            if (!e.key || e.key.length !== 1) return;
 
-            adminSecretKeySeq += e.key.toLowerCase();
+            // e.code 우선 매핑 (영문/한글 자판 상태 상관없이 물리적 키보드 대응)
+            const codeMap = { KeyA: 'a', KeyR: 'r', KeyO: 'o', KeyN: 'n' };
+            if (codeMap[e.code]) {
+                adminSecretKeySeq += codeMap[e.code];
+            } else if (e.key) {
+                const k = e.key.toLowerCase();
+                if (k === 'ㅁ') adminSecretKeySeq += 'a';
+                else if (k === 'ㄱ') adminSecretKeySeq += 'r';
+                else if (k === 'ㅐ' || k === 'ㅗ') adminSecretKeySeq += 'o';
+                else if (k === 'ㅜ') adminSecretKeySeq += 'n';
+                else if (k.length === 1) adminSecretKeySeq += k;
+            }
+
             clearTimeout(adminSecretKeyTimer);
             adminSecretKeyTimer = setTimeout(() => {
                 adminSecretKeySeq = '';
-            }, 2500);
+            }, 3000);
 
             if (adminSecretKeySeq.endsWith('aaron')) {
                 adminSecretKeySeq = '';
+                const activeEl = document.activeElement;
+                if (activeEl && (activeEl.tagName === 'INPUT' || activeEl.tagName === 'TEXTAREA')) {
+                    activeEl.blur();
+                }
                 openAdminAuthModal();
+            }
+        });
+
+        // 1-2. 검색창에 "aaron" 입력 즉시 감지 (모바일 가상 키보드 및 엔터 없이도 반응)
+        document.addEventListener('DOMContentLoaded', () => {
+            ['plant-input', 'topbar-input'].forEach(id => {
+                const el = document.getElementById(id);
+                if (el) {
+                    el.addEventListener('input', () => {
+                        const val = el.value.trim().toLowerCase();
+                        if (val === 'aaron' || val === 'ㅁㅁㄱㅐㅜ' || val === 'ㅁㅁ개ㅜ') {
+                            el.value = '';
+                            el.blur();
+                            openAdminAuthModal();
+                        }
+                    });
+                }
+            });
+
+            // 1-3. 모바일 편의 기능: 상단 로고 🌱 5회 연속 탭 시 관리자 인증 열기
+            let logoTapCount = 0;
+            let logoTapTimer = null;
+            const logoEl = document.getElementById('home-logo-btn');
+            if (logoEl) {
+                logoEl.addEventListener('click', (e) => {
+                    logoTapCount++;
+                    clearTimeout(logoTapTimer);
+                    logoTapTimer = setTimeout(() => { logoTapCount = 0; }, 1500);
+                    if (logoTapCount >= 5) {
+                        logoTapCount = 0;
+                        e.preventDefault();
+                        e.stopPropagation();
+                        openAdminAuthModal();
+                    }
+                });
             }
         });
 
