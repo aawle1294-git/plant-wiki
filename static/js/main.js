@@ -8,6 +8,7 @@
                 '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
             }[c]));
         }
+        const escapeHtml = esc;
 
         // ============ 테마 (다크/화이트) ============
         function setTheme(t) {
