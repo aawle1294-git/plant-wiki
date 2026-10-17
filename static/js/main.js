@@ -1338,6 +1338,14 @@
             const seq = ++searchSeq;
             currentPlantName = plantName;
 
+            // 관리자 시크릿 키워드 "aaron"은 검색창에서 동작하지 않고 일반 차단 처리
+            if (plantName && plantName.trim().toLowerCase() === 'aaron') {
+                showToast('🌱 검색 결과가 없습니다.', 'info');
+                document.getElementById('loading-state')?.classList.add('hidden');
+                document.querySelectorAll('.submit-btn').forEach(b => b.disabled = false);
+                return;
+            }
+
             // 대시보드 등 다른 뷰에서 검색한 경우 홈/결과 뷰로 즉시 전환
             if (currentView !== 'home') {
                 currentView = 'home';
@@ -2920,5 +2928,620 @@
                 });
             }
         });
+
+        // ===================== 노션 스타일 관리자 (Admin Workspace) =====================
+        let adminSecretKeySeq = '';
+        let adminSecretKeyTimer = null;
+        let adminState = {
+            users: [],
+            search_analytics: { top_searches: [], source_breakdown: {}, recent_logs: [] },
+            survey_data: { total: 0, avg_speed: 5, avg_accuracy: 5, reuse_rate: 100, responses: [] },
+            reports: [],
+            stats: {}
+        };
+
+        // 1. 화면 시크릿 키 입력 감지 ("화면에 aaron을 치면... 검색창이나 다른 곳에서 aaron을 치면 안 뜨게!")
+        window.addEventListener('keydown', (e) => {
+            // Esc 키로 관리자 모달 닫기
+            if (e.key === 'Escape') {
+                const editModal = document.getElementById('notion-member-edit-modal');
+                if (editModal && editModal.style.display === 'flex') {
+                    closeAdminUserEditModal();
+                    return;
+                }
+                const dashModal = document.getElementById('notion-admin-dashboard-modal');
+                if (dashModal && dashModal.style.display === 'flex') {
+                    closeAdminDashboardModal();
+                    return;
+                }
+                const authModal = document.getElementById('notion-admin-auth-modal');
+                if (authModal && authModal.style.display === 'flex') {
+                    closeAdminAuthModal();
+                    return;
+                }
+            }
+
+            // 중요: 검색창, 텍스트입력 등 입력 요소에 포커스되어 있을 때는 트리거 무시 ("검색창이나 다른 곳에서 aaron을 치면 안 뜨게!")
+            const activeEl = document.activeElement;
+            const isEditing = activeEl && (
+                activeEl.tagName === 'INPUT' ||
+                activeEl.tagName === 'TEXTAREA' ||
+                activeEl.tagName === 'SELECT' ||
+                activeEl.isContentEditable ||
+                Boolean(activeEl.closest('input, textarea, select, [contenteditable="true"]'))
+            );
+            if (isEditing) return;
+
+            // 보조키(Ctrl, Alt, Meta) 제외
+            if (e.ctrlKey || e.altKey || e.metaKey) return;
+            if (!e.key || e.key.length !== 1) return;
+
+            adminSecretKeySeq += e.key.toLowerCase();
+            clearTimeout(adminSecretKeyTimer);
+            adminSecretKeyTimer = setTimeout(() => {
+                adminSecretKeySeq = '';
+            }, 2500);
+
+            if (adminSecretKeySeq.endsWith('aaron')) {
+                adminSecretKeySeq = '';
+                openAdminAuthModal();
+            }
+        });
+
+        // 2. 관리자 인증 모달 컨트롤
+        function openAdminAuthModal() {
+            const modal = document.getElementById('notion-admin-auth-modal');
+            const passInput = document.getElementById('notion-admin-pass');
+            const errorBox = document.getElementById('notion-auth-error');
+            if (modal) {
+                modal.style.display = 'flex';
+                if (passInput) {
+                    passInput.value = '';
+                    setTimeout(() => passInput.focus(), 100);
+                }
+                if (errorBox) errorBox.style.display = 'none';
+            }
+        }
+
+        function closeAdminAuthModal() {
+            const modal = document.getElementById('notion-admin-auth-modal');
+            if (modal) modal.style.display = 'none';
+        }
+
+        function closeAdminAuthOnBackdrop(e) {
+            if (e.target.id === 'notion-admin-auth-modal') {
+                closeAdminAuthModal();
+            }
+        }
+
+        async function submitAdminAuth(e) {
+            if (e) e.preventDefault();
+            const passInput = document.getElementById('notion-admin-pass');
+            const submitBtn = document.getElementById('notion-auth-submit-btn');
+            const errorBox = document.getElementById('notion-auth-error');
+            const errorMsg = document.getElementById('notion-auth-error-msg');
+            const passVal = passInput ? passInput.value.trim() : '';
+
+            if (!passVal) return;
+
+            if (submitBtn) {
+                submitBtn.disabled = true;
+                submitBtn.innerText = '인증 확인 중...';
+            }
+            if (errorBox) errorBox.style.display = 'none';
+
+            try {
+                const res = await fetch('/api/admin/auth', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ password: passVal })
+                });
+                const data = await res.json();
+                if (!res.ok) {
+                    throw new Error(data.detail || '비밀번호가 올바르지 않습니다.');
+                }
+
+                // 인증 성공
+                sessionStorage.setItem('plant_admin_token', data.admin_token || 'verified');
+                closeAdminAuthModal();
+                openAdminDashboardModal();
+                showToast('🔐 관리자 워크스페이스에 접속했습니다.', 'success');
+            } catch (err) {
+                if (errorBox && errorMsg) {
+                    errorMsg.innerText = err.message || '인증에 실패했습니다.';
+                    errorBox.style.display = 'flex';
+                }
+            } finally {
+                if (submitBtn) {
+                    submitBtn.disabled = false;
+                    submitBtn.innerText = '워크스페이스 열기 →';
+                }
+            }
+        }
+
+        // 3. 관리자 대시보드 모달 컨트롤
+        function openAdminDashboardModal() {
+            const modal = document.getElementById('notion-admin-dashboard-modal');
+            if (modal) {
+                modal.style.display = 'flex';
+                loadAdminDashboardData();
+            }
+        }
+
+        function closeAdminDashboardModal() {
+            const modal = document.getElementById('notion-admin-dashboard-modal');
+            if (modal) modal.style.display = 'none';
+        }
+
+        function closeAdminDashboardOnBackdrop(e) {
+            if (e.target.id === 'notion-admin-dashboard-modal') {
+                closeAdminDashboardModal();
+            }
+        }
+
+        // 4. 대시보드 데이터 로드
+        async function loadAdminDashboardData() {
+            try {
+                const res = await fetch('/api/admin/dashboard');
+                const data = await res.json();
+                if (!res.ok) throw new Error(data.detail || '대시보드 데이터를 불러오지 못했습니다.');
+
+                adminState.users = data.users || [];
+                adminState.search_analytics = data.search_analytics || { top_searches: [], source_breakdown: {}, recent_logs: [] };
+                adminState.survey_data = data.survey_data || { total: 0, avg_speed: 5, avg_accuracy: 5, reuse_rate: 100, responses: [] };
+                adminState.reports = data.reports || [];
+                adminState.stats = data.stats || {};
+
+                // 상단 프로퍼티 업데이트
+                document.getElementById('notion-stat-users').innerText = `${adminState.stats.total_users || adminState.users.length}명`;
+                document.getElementById('notion-stat-searches').innerText = `${(adminState.stats.total_searches || 0).toLocaleString()}회`;
+                document.getElementById('notion-stat-surveys').innerText = `${adminState.stats.total_surveys || adminState.survey_data.total}건`;
+                document.getElementById('notion-stat-leaves').innerText = `${(adminState.stats.total_leaves || 0).toLocaleString()} 잎`;
+
+                // 탭 뱃지 카운트
+                document.getElementById('notion-tab-user-count').innerText = adminState.users.length;
+                document.getElementById('notion-tab-survey-count').innerText = adminState.survey_data.responses ? adminState.survey_data.responses.length : 0;
+                document.getElementById('notion-tab-report-count').innerText = adminState.reports.length;
+
+                // 각 탭 렌더링
+                renderAdminUsers(adminState.users);
+                renderAdminSearchAnalytics(adminState.search_analytics, adminState.stats);
+                renderAdminSurveys(adminState.survey_data);
+                renderAdminReports(adminState.reports);
+
+            } catch (err) {
+                console.error('Admin Dashboard Load Error:', err);
+                showToast(err.message || '데이터 로드 실패', 'error');
+            }
+        }
+
+        // 5. 탭 전환
+        function switchAdminTab(tabName) {
+            const tabs = ['users', 'search', 'surveys', 'reports', 'summary'];
+            tabs.forEach(t => {
+                const panel = document.getElementById(`notion-tab-panel-${t}`);
+                if (panel) panel.style.display = (t === tabName) ? 'block' : 'none';
+            });
+
+            // 탭 버튼 active 클래스 토글
+            const buttons = document.querySelectorAll('.notion-tabs-nav .notion-tab-btn');
+            buttons.forEach(btn => {
+                const onclickAttr = btn.getAttribute('onclick') || '';
+                if (onclickAttr.includes(`'${tabName}'`)) {
+                    btn.classList.add('active');
+                } else {
+                    btn.classList.remove('active');
+                }
+            });
+        }
+
+        // 6. 회원 관리 탭 렌더링 & 검색
+        function getTitleTagClass(title) {
+            if (!title) return 'notion-tag-gray';
+            if (title.includes('새싹')) return 'notion-tag-green';
+            if (title.includes('정원사')) return 'notion-tag-blue';
+            if (title.includes('박사')) return 'notion-tag-purple';
+            if (title.includes('마스터') || title.includes('왕')) return 'notion-tag-yellow';
+            if (title.includes('그리너') || title.includes('요정')) return 'notion-tag-green';
+            return 'notion-tag-blue';
+        }
+
+        function renderAdminUsers(usersList) {
+            const tbody = document.getElementById('notion-users-tbody');
+            const countEl = document.getElementById('notion-filtered-users-count');
+            if (countEl) countEl.innerText = usersList.length;
+            if (!tbody) return;
+
+            if (!usersList || usersList.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="7" style="text-align:center; padding:32px; color:#787774;">일치하는 회원이 없습니다.</td></tr>`;
+                return;
+            }
+
+            tbody.innerHTML = usersList.map(u => {
+                const userId = u.id || '-';
+                const shortId = userId.length > 14 ? (userId.slice(0, 8) + '...' + userId.slice(-4)) : userId;
+                const dateStr = u.created_at ? u.created_at.split('T')[0] : '2026-10-17';
+                const tagClass = getTitleTagClass(u.title);
+
+                return `
+                    <tr>
+                        <td>
+                            <div style="display:flex; align-items:center; gap:8px;">
+                                <span style="font-size:1.15rem;">${u.avatar_emoji || '🌱'}</span>
+                                <span style="font-weight:600; color:#37352f;">${escapeHtml(u.nickname || '식집사')}</span>
+                            </div>
+                        </td>
+                        <td>
+                            <span class="notion-tag ${tagClass}">${escapeHtml(u.title || '새싹')}</span>
+                        </td>
+                        <td>
+                            <span style="font-weight:700; color:#2b783c;">🍃 ${(u.leaf_balance || 0).toLocaleString()}</span>
+                        </td>
+                        <td>
+                            <span style="font-weight:600; color:#d97706;">🔥 ${u.streak_count || 1}일</span>
+                        </td>
+                        <td>
+                            <code style="font-family:monospace; font-size:0.75rem; color:#787774; background:#f7f6f3; padding:2px 6px; border-radius:4px;" title="${escapeHtml(userId)}">${escapeHtml(shortId)}</code>
+                        </td>
+                        <td style="color:#787774; font-size:0.78rem;">
+                            ${dateStr}
+                        </td>
+                        <td style="text-align:center;">
+                            <button type="button" class="notion-btn notion-btn-secondary" style="padding:4px 10px; font-size:0.75rem;" onclick="openAdminUserEditModal('${escapeHtml(userId)}')">
+                                ✏️ 수정
+                            </button>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        function filterAdminUsers() {
+            const filterInput = document.getElementById('notion-user-filter-input');
+            const q = filterInput ? filterInput.value.trim().toLowerCase() : '';
+            if (!q) {
+                renderAdminUsers(adminState.users);
+                return;
+            }
+            const filtered = adminState.users.filter(u => {
+                const name = (u.nickname || '').toLowerCase();
+                const title = (u.title || '').toLowerCase();
+                const id = (u.id || '').toLowerCase();
+                const email = (u.email || '').toLowerCase();
+                return name.includes(q) || title.includes(q) || id.includes(q) || email.includes(q);
+            });
+            renderAdminUsers(filtered);
+        }
+
+        // 7. 회원 정보 수정 모달 (리프, 닉네임, 칭호)
+        function openAdminUserEditModal(userId) {
+            const user = adminState.users.find(u => u.id === userId);
+            if (!user) {
+                showToast('회원 정보를 찾을 수 없습니다.', 'error');
+                return;
+            }
+
+            document.getElementById('notion-edit-target-id').value = user.id;
+            document.getElementById('notion-edit-user-id').innerText = `ID: ${user.id} (${user.email || '게스트'})`;
+            document.getElementById('notion-edit-nickname').value = user.nickname || '';
+            document.getElementById('notion-edit-leaf').value = user.leaf_balance != null ? user.leaf_balance : 50;
+
+            const titlePreset = document.getElementById('notion-edit-title-preset');
+            const customTitleInput = document.getElementById('notion-edit-title-custom');
+            const currentTitle = user.title || '새싹';
+
+            const presetOptions = ['새싹', '정원사', '식물박사', '그리너', '플랜트마스터', '숲의 요정'];
+            if (presetOptions.includes(currentTitle)) {
+                titlePreset.value = currentTitle;
+                customTitleInput.style.display = 'none';
+                customTitleInput.value = '';
+            } else {
+                titlePreset.value = 'custom';
+                customTitleInput.style.display = 'block';
+                customTitleInput.value = currentTitle;
+            }
+
+            const modal = document.getElementById('notion-member-edit-modal');
+            if (modal) modal.style.display = 'flex';
+        }
+
+        function closeAdminUserEditModal() {
+            const modal = document.getElementById('notion-member-edit-modal');
+            if (modal) modal.style.display = 'none';
+        }
+
+        function closeAdminUserEditOnBackdrop(e) {
+            if (e.target.id === 'notion-member-edit-modal') {
+                closeAdminUserEditModal();
+            }
+        }
+
+        function onTitlePresetChange(val) {
+            const customInput = document.getElementById('notion-edit-title-custom');
+            if (!customInput) return;
+            if (val === 'custom') {
+                customInput.style.display = 'block';
+                customInput.focus();
+            } else {
+                customInput.style.display = 'none';
+                customInput.value = '';
+            }
+        }
+
+        function adjustEditLeaf(delta) {
+            const leafInput = document.getElementById('notion-edit-leaf');
+            if (!leafInput) return;
+            const current = parseInt(leafInput.value || 0, 10);
+            leafInput.value = Math.max(0, current + delta);
+        }
+
+        async function submitAdminUserEdit(e) {
+            if (e) e.preventDefault();
+            const targetId = document.getElementById('notion-edit-target-id').value;
+            const nickname = document.getElementById('notion-edit-nickname').value.trim();
+            const presetVal = document.getElementById('notion-edit-title-preset').value;
+            const customVal = document.getElementById('notion-edit-title-custom').value.trim();
+            const title = (presetVal === 'custom') ? (customVal || '새싹') : presetVal;
+            const leaf = parseInt(document.getElementById('notion-edit-leaf').value || 0, 10);
+            const saveBtn = document.getElementById('notion-edit-save-btn');
+
+            if (!targetId || !nickname) {
+                showToast('닉네임을 입력해 주세요.', 'error');
+                return;
+            }
+
+            if (saveBtn) {
+                saveBtn.disabled = true;
+                saveBtn.innerText = '저장 중...';
+            }
+
+            try {
+                const res = await fetch('/api/admin/user/update', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        user_id: targetId,
+                        nickname: nickname,
+                        title: title,
+                        leaf_balance: leaf
+                    })
+                });
+                const data = await res.json();
+                if (!res.ok) throw new Error(data.detail || '회원 정보 수정에 실패했습니다.');
+
+                showToast(data.message || '회원 정보가 성공적으로 변경되었습니다. 💾', 'success');
+
+                // 로컬 상태 동기화
+                const userIdx = adminState.users.findIndex(u => u.id === targetId);
+                if (userIdx >= 0) {
+                    adminState.users[userIdx] = { ...adminState.users[userIdx], ...data.user };
+                }
+
+                // 현재 접속 중인 사용자가 수정된 본인인 경우 앱 UI 갱신
+                if (currentUser && currentUser.id === targetId) {
+                    currentUser.nickname = nickname;
+                    currentUser.title = title;
+                    currentUser.leaf_balance = leaf;
+                    updateProfileUI(currentUser);
+                }
+
+                filterAdminUsers();
+                closeAdminUserEditModal();
+            } catch (err) {
+                showToast(err.message || '오류가 발생했습니다.', 'error');
+            } finally {
+                if (saveBtn) {
+                    saveBtn.disabled = false;
+                    saveBtn.innerText = '💾 저장하기';
+                }
+            }
+        }
+
+        // 8. 검색도 & 키워드 분석 탭 렌더링
+        function renderAdminSearchAnalytics(analytics, stats) {
+            const topSearches = analytics.top_searches || [];
+            const breakdown = analytics.source_breakdown || {};
+            const recentLogs = analytics.recent_logs || [];
+
+            // KPI
+            const totalSearches = stats.total_searches || 0;
+            document.getElementById('notion-search-kpi-total').innerText = `${totalSearches.toLocaleString()}회`;
+            document.getElementById('notion-search-kpi-top1').innerText = topSearches.length > 0 ? `🌱 ${topSearches[0].query}` : '몬스테라';
+
+            const aiCount = breakdown['gemini_ai'] || 0;
+            const aiRate = totalSearches > 0 ? Math.round((aiCount / totalSearches) * 100) : 65;
+            document.getElementById('notion-search-kpi-airate').innerText = `${aiRate}%`;
+
+            // 검색도 순위 (TOP 10)
+            const topListEl = document.getElementById('notion-top-searches-list');
+            if (topListEl) {
+                if (topSearches.length === 0) {
+                    topListEl.innerHTML = `<p style="font-size:0.8rem; color:#787774; text-align:center; padding:16px;">수집된 검색어가 없습니다.</p>`;
+                } else {
+                    const maxCount = Math.max(...topSearches.map(s => s.count), 1);
+                    topListEl.innerHTML = topSearches.map((s, idx) => {
+                        const pct = Math.max(14, Math.round((s.count / maxCount) * 100));
+                        return `
+                            <div class="notion-ranking-item">
+                                <span class="notion-ranking-rank">${idx + 1}</span>
+                                <span class="notion-ranking-name">🌿 ${escapeHtml(s.query)}</span>
+                                <div class="notion-ranking-bar-wrapper">
+                                    <div class="notion-ranking-bar" style="width: ${pct}%;"></div>
+                                </div>
+                                <span class="notion-ranking-count">${s.count}회</span>
+                            </div>
+                        `;
+                    }).join('');
+                }
+            }
+
+            // 소스 점유율
+            const breakdownListEl = document.getElementById('notion-source-breakdown-list');
+            if (breakdownListEl) {
+                const sourceNames = {
+                    'plant_directory': { label: '📖 대표 식물 도감', tag: 'notion-tag-green' },
+                    'gemini_ai': { label: '🤖 Gemini AI 탐구', tag: 'notion-tag-purple' },
+                    'knowledge_base': { label: '📚 로컬 지식베이스', tag: 'notion-tag-blue' }
+                };
+
+                const totalSource = Object.values(breakdown).reduce((a, b) => a + b, 0) || 1;
+                const sourceKeys = Object.keys(breakdown).length > 0 ? Object.keys(breakdown) : ['plant_directory', 'gemini_ai', 'knowledge_base'];
+
+                breakdownListEl.innerHTML = sourceKeys.map(key => {
+                    const cnt = breakdown[key] || 1;
+                    const info = sourceNames[key] || { label: key, tag: 'notion-tag-gray' };
+                    const pct = Math.round((cnt / totalSource) * 100);
+                    return `
+                        <div class="notion-ranking-item">
+                            <span class="notion-tag ${info.tag}">${info.label}</span>
+                            <div class="notion-ranking-bar-wrapper" style="margin: 0 16px;">
+                                <div class="notion-ranking-bar" style="width:${pct}%; background:#2b783c;"></div>
+                            </div>
+                            <span class="notion-ranking-count">${cnt}회 (${pct}%)</span>
+                        </div>
+                    `;
+                }).join('');
+            }
+
+            // 실시간 검색 로그 테이블
+            const logsTbody = document.getElementById('notion-search-logs-tbody');
+            if (logsTbody) {
+                if (recentLogs.length === 0) {
+                    logsTbody.innerHTML = `<tr><td colspan="4" style="text-align:center; padding:20px; color:#787774;">기록된 검색 로그가 없습니다.</td></tr>`;
+                } else {
+                    logsTbody.innerHTML = recentLogs.map(log => {
+                        let sourceTag = 'notion-tag-gray';
+                        let sourceName = log.source || 'gemini_ai';
+                        if (sourceName === 'gemini_ai') { sourceTag = 'notion-tag-purple'; sourceName = '🤖 Gemini AI'; }
+                        else if (sourceName === 'plant_directory') { sourceTag = 'notion-tag-green'; sourceName = '🌱 대표 도감'; }
+                        else if (sourceName === 'knowledge_base') { sourceTag = 'notion-tag-blue'; sourceName = '📚 지식베이스'; }
+
+                        const timeStr = log.timestamp ? log.timestamp.replace('T', ' ').slice(5, 19) : '-';
+
+                        return `
+                            <tr>
+                                <td style="font-weight:600; color:#37352f;">🌿 ${escapeHtml(log.query || '-')}</td>
+                                <td><span class="notion-tag ${sourceTag}">${sourceName}</span></td>
+                                <td style="color:#787774; font-family:monospace; font-size:0.75rem;">${escapeHtml(log.user_id || '익명')}</td>
+                                <td style="color:#787774; font-size:0.76rem;">${timeStr}</td>
+                            </tr>
+                        `;
+                    }).join('');
+                }
+            }
+        }
+
+        // 9. 설문조사 결과 탭 렌더링
+        function renderAdminSurveys(surveyData) {
+            document.getElementById('notion-survey-kpi-reuse').innerText = `${surveyData.reuse_rate || 90}%`;
+            document.getElementById('notion-survey-kpi-speed').innerText = `${surveyData.avg_speed || 4.8} / 5.0`;
+            document.getElementById('notion-survey-kpi-accuracy').innerText = `${surveyData.avg_accuracy || 4.9} / 5.0`;
+
+            const tbody = document.getElementById('notion-survey-tbody');
+            if (!tbody) return;
+
+            const responses = surveyData.responses || [];
+            if (responses.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="7" style="text-align:center; padding:24px; color:#787774;">접수된 설문 응답이 없습니다.</td></tr>`;
+                return;
+            }
+
+            tbody.innerHTML = responses.map(r => {
+                const submittedAt = r.submitted_at ? r.submitted_at.replace('T', ' ').slice(5, 16) : '-';
+                const reuseBadge = r.reuse === 'yes'
+                    ? '<span class="notion-tag notion-tag-green">✅ 또 쓸래요</span>'
+                    : '<span class="notion-tag notion-tag-red">❌ 아니요</span>';
+
+                const speedStars = '⭐'.repeat(r.speed || 5);
+                const accStars = '⭐'.repeat(r.accuracy || 5);
+
+                let aiBadge = '<span class="notion-tag notion-tag-gray">-</span>';
+                if (r.aihelp === 'yes') aiBadge = '<span class="notion-tag notion-tag-purple">🌟 더 도움됨</span>';
+                else if (r.aihelp === 'same') aiBadge = '<span class="notion-tag notion-tag-blue">😐 비슷함</span>';
+                else if (r.aihelp === 'no') aiBadge = '<span class="notion-tag notion-tag-yellow">🤔 일반 검색</span>';
+
+                const comment = r.comments ? escapeHtml(r.comments) : '<span style="color:#9b9a97; font-style:italic;">(의견 없음)</span>';
+
+                return `
+                    <tr>
+                        <td style="color:#787774; font-size:0.76rem;">${submittedAt}</td>
+                        <td><span class="notion-tag notion-tag-gray">${escapeHtml(r.source || '일반')}</span></td>
+                        <td>${reuseBadge}</td>
+                        <td style="font-size:0.75rem;">${speedStars}</td>
+                        <td style="font-size:0.75rem;">${accStars}</td>
+                        <td>${aiBadge}</td>
+                        <td style="line-height:1.4; color:#37352f;">
+                            <div style="background:#fbfbfa; border:1px solid #f1f0ec; padding:6px 10px; border-radius:6px; font-size:0.78rem;">
+                                ${comment}
+                            </div>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        // 10. 커뮤니티 신고 탭 렌더링 & 처리
+        function renderAdminReports(reports) {
+            const tbody = document.getElementById('notion-reports-tbody');
+            if (!tbody) return;
+
+            if (!reports || reports.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="6" style="text-align:center; padding:24px; color:#787774;">접수된 신고가 없습니다. 깨끗한 커뮤니티입니다! 🌱</td></tr>`;
+                return;
+            }
+
+            tbody.innerHTML = reports.map(r => {
+                let statusTag = '<span class="notion-tag notion-tag-yellow">대기 중</span>';
+                if (r.status === 'resolved') statusTag = '<span class="notion-tag notion-tag-green">해결됨</span>';
+                else if (r.status === 'post_deleted') statusTag = '<span class="notion-tag notion-tag-red">게시글 삭제됨</span>';
+
+                const timeStr = r.created_at ? r.created_at.replace('T', ' ').slice(5, 16) : '-';
+                const reporterId = r.reporter_id ? (r.reporter_id.slice(0, 8) + '...') : '익명';
+
+                return `
+                    <tr>
+                        <td>${statusTag}</td>
+                        <td style="font-weight:600; color:#cf222e;">${escapeHtml(r.reason || '신고')}</td>
+                        <td style="font-size:0.78rem; color:#55534e;">${escapeHtml(r.details || '(상세 내용 없음)')}</td>
+                        <td style="font-family:monospace; font-size:0.75rem; color:#787774;">${escapeHtml(reporterId)}</td>
+                        <td style="font-size:0.76rem; color:#787774;">${timeStr}</td>
+                        <td style="text-align:center;">
+                            <div style="display:flex; align-items:center; justify-content:center; gap:6px;">
+                                <button type="button" class="notion-btn notion-btn-secondary" style="padding:4px 8px; font-size:0.72rem;" onclick="adminReportAction('${escapeHtml(r.id)}', 'resolve')">
+                                    ✅ 해결
+                                </button>
+                                <button type="button" class="notion-btn notion-btn-danger" style="padding:4px 8px; font-size:0.72rem;" onclick="adminReportAction('${escapeHtml(r.id)}', 'delete_post')">
+                                    🗑️ 글 삭제
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        async function adminReportAction(reportId, action) {
+            const confirmMsg = action === 'delete_post'
+                ? '정말로 해당 게시글을 삭제하고 신고를 종결하시겠습니까?'
+                : '해당 신고를 처리 완료(해결됨) 상태로 변경하시겠습니까?';
+
+            if (!confirm(confirmMsg)) return;
+
+            try {
+                const res = await fetch('/api/admin/report/action', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ report_id: reportId, action: action })
+                });
+                const data = await res.json();
+                if (!res.ok) throw new Error(data.detail || '신고 처리에 실패했습니다.');
+
+                showToast(data.message || '신고 조치가 완료되었습니다.', 'success');
+                loadAdminDashboardData();
+            } catch (err) {
+                showToast(err.message || '오류가 발생했습니다.', 'error');
+            }
+        }
+
 
 

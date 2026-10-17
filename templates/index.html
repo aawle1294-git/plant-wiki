@@ -1508,6 +1508,367 @@
     </div>
 </div>
 
+<!-- ===================== NOTION STYLE ADMIN WORKSPACE ===================== -->
+<!-- 1. 관리자 인증 모달 -->
+<div id="notion-admin-auth-modal" class="notion-modal-overlay" style="display:none;" onclick="closeAdminAuthOnBackdrop(event)">
+    <div class="notion-auth-card" onclick="event.stopPropagation()">
+        <div class="notion-auth-header">
+            <span class="notion-page-icon">🔐</span>
+            <div class="notion-breadcrumb">Plant!p / <span>Workspace</span> / <span>Admin</span></div>
+            <h2 class="notion-auth-title">관리자 인증</h2>
+            <p class="notion-auth-subtitle">비밀 코드로 접근했습니다. 관리자 비밀번호를 입력해 주세요.</p>
+        </div>
+        <form id="notion-admin-auth-form" onsubmit="submitAdminAuth(event)">
+            <div class="notion-input-group">
+                <label class="notion-input-label" for="notion-admin-pass">비밀번호</label>
+                <input type="password" id="notion-admin-pass" class="notion-input" placeholder="비밀번호 입력..." autocomplete="current-password" required>
+            </div>
+            <div id="notion-auth-error" class="notion-callout notion-callout-red" style="display:none; margin-top:12px;">
+                <span>⚠️</span>
+                <span id="notion-auth-error-msg">비밀번호가 올바르지 않습니다.</span>
+            </div>
+            <div class="notion-auth-actions">
+                <button type="button" class="notion-btn notion-btn-secondary" onclick="closeAdminAuthModal()">취소</button>
+                <button type="submit" id="notion-auth-submit-btn" class="notion-btn notion-btn-primary">워크스페이스 열기 →</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- 2. 관리자 대시보드 모달 (노션 스타일) -->
+<div id="notion-admin-dashboard-modal" class="notion-modal-overlay" style="display:none;" onclick="closeAdminDashboardOnBackdrop(event)">
+    <div class="notion-workspace-page" onclick="event.stopPropagation()">
+        <!-- Top Cover Banner -->
+        <div class="notion-cover">
+            <button class="notion-cover-close-btn" onclick="closeAdminDashboardModal()" title="닫기 (Esc)">
+                <span>✕</span> <span>닫기</span>
+            </button>
+        </div>
+
+        <!-- Page Header & Icon -->
+        <div class="notion-page-header">
+            <div class="notion-big-icon">🪴</div>
+            <div class="notion-header-meta">
+                <div class="notion-breadcrumbs">
+                    <span>🌿 Plant!p</span>
+                    <span class="sep">/</span>
+                    <span>📂 워크스페이스</span>
+                    <span class="sep">/</span>
+                    <span class="current">⚙️ 관리자 대시보드</span>
+                </div>
+                <div class="notion-title-row">
+                    <h1 class="notion-page-title">Plant!p 관리자 워크스페이스</h1>
+                    <div class="notion-header-badge">
+                        <span class="notion-live-dot"></span> Live v2.4
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Notion Properties List -->
+        <div class="notion-properties-card">
+            <div class="notion-prop-item">
+                <span class="notion-prop-name">🔑 권한</span>
+                <span class="notion-tag notion-tag-green">최고 관리자 (Verified)</span>
+            </div>
+            <div class="notion-prop-item">
+                <span class="notion-prop-name">👥 총 회원수</span>
+                <span id="notion-stat-users" class="notion-prop-val">-</span>
+            </div>
+            <div class="notion-prop-item">
+                <span class="notion-prop-name">🔍 누적 검색량</span>
+                <span id="notion-stat-searches" class="notion-prop-val">-</span>
+            </div>
+            <div class="notion-prop-item">
+                <span class="notion-prop-name">📋 설문 응답수</span>
+                <span id="notion-stat-surveys" class="notion-prop-val">-</span>
+            </div>
+            <div class="notion-prop-item">
+                <span class="notion-prop-name">🍃 총 리프 발행</span>
+                <span id="notion-stat-leaves" class="notion-prop-val">-</span>
+            </div>
+        </div>
+
+        <!-- Notion Callout Info Box -->
+        <div class="notion-callout">
+            <span class="notion-callout-icon">💡</span>
+            <div class="notion-callout-content">
+                <strong>Notion Admin Console:</strong> 화면 어디서든 <code>aaron</code>을 입력하여 열 수 있는 전용 관리자 공간입니다. 회원 프로필(닉네임, 칭호, 리프)을 실시간으로 관리하고, 검색도 및 통계 분석, 설문 응답, 신고 내역을 모니터링할 수 있습니다.
+            </div>
+        </div>
+
+        <!-- Notion Database Views (Tabs) -->
+        <div class="notion-tabs-nav">
+            <button class="notion-tab-btn active" onclick="switchAdminTab('users')">
+                <span>👥</span> 회원 관리 & 리프/칭호
+                <span id="notion-tab-user-count" class="notion-tab-count">0</span>
+            </button>
+            <button class="notion-tab-btn" onclick="switchAdminTab('search')">
+                <span>🔍</span> 검색도 & 키워드 분석
+            </button>
+            <button class="notion-tab-btn" onclick="switchAdminTab('surveys')">
+                <span>📋</span> 설문조사 결과
+                <span id="notion-tab-survey-count" class="notion-tab-count">0</span>
+            </button>
+            <button class="notion-tab-btn" onclick="switchAdminTab('reports')">
+                <span>🚨</span> 커뮤니티 신고
+                <span id="notion-tab-report-count" class="notion-tab-count">0</span>
+            </button>
+            <button class="notion-tab-btn" onclick="switchAdminTab('summary')">
+                <span>📊</span> 서비스 종합 지표
+            </button>
+            <div class="notion-tab-spacer"></div>
+            <button class="notion-refresh-btn" onclick="loadAdminDashboardData()" title="데이터 새로고침">
+                <span>🔄</span> 새로고침
+            </button>
+        </div>
+
+        <!-- Tab 1: 회원 관리 (Notion Table) -->
+        <div id="notion-tab-panel-users" class="notion-tab-panel active">
+            <div class="notion-db-toolbar">
+                <div class="notion-db-search-box">
+                    <span class="notion-search-icon">🔍</span>
+                    <input type="text" id="notion-user-filter-input" placeholder="닉네임, 칭호, ID로 검색..." oninput="filterAdminUsers()">
+                </div>
+                <div class="notion-db-meta-text">
+                    총 <span id="notion-filtered-users-count">0</span>명의 회원
+                </div>
+            </div>
+            <div class="notion-table-container">
+                <table class="notion-table">
+                    <thead>
+                        <tr>
+                            <th style="width: 220px;">Aa 닉네임</th>
+                            <th style="width: 140px;">🏷️ 칭호</th>
+                            <th style="width: 130px;">🍃 리프 잔액</th>
+                            <th style="width: 100px;">🔥 스트릭</th>
+                            <th style="width: 200px;">🆔 사용자 ID</th>
+                            <th style="width: 150px;">📅 가입일</th>
+                            <th style="width: 100px; text-align: center;">⚡ 작업</th>
+                        </tr>
+                    </thead>
+                    <tbody id="notion-users-tbody">
+                        <!-- Dynamic Rows -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Tab 2: 검색도 & 키워드 분석 -->
+        <div id="notion-tab-panel-search" class="notion-tab-panel" style="display:none;">
+            <div class="notion-kpi-grid">
+                <div class="notion-kpi-card">
+                    <div class="notion-kpi-title">총 검색 횟수</div>
+                    <div id="notion-search-kpi-total" class="notion-kpi-value">-</div>
+                    <div class="notion-kpi-sub">실시간 로그 수집 중</div>
+                </div>
+                <div class="notion-kpi-card">
+                    <div class="notion-kpi-title">🔥 인기 검색 식물 1위</div>
+                    <div id="notion-search-kpi-top1" class="notion-kpi-value">-</div>
+                    <div class="notion-kpi-sub">가장 많이 탐색된 품종</div>
+                </div>
+                <div class="notion-kpi-card">
+                    <div class="notion-kpi-title">🤖 AI 모델 활용율</div>
+                    <div id="notion-search-kpi-airate" class="notion-kpi-value">-</div>
+                    <div class="notion-kpi-sub">Gemini 탐구 엔진 연동</div>
+                </div>
+            </div>
+
+            <div class="notion-grid-2col mt-4">
+                <!-- 인기 검색어 (검색도) 순위 -->
+                <div class="notion-card-box">
+                    <h3 class="notion-box-title">🏆 검색도 순위 (TOP 10 키워드)</h3>
+                    <p class="notion-box-desc">사용자들이 가장 많이 검색한 식물 랭킹과 빈도수입니다.</p>
+                    <div id="notion-top-searches-list" class="notion-ranking-list mt-3">
+                        <!-- Dynamic ranking items -->
+                    </div>
+                </div>
+
+                <!-- 검색 소스 비율 -->
+                <div class="notion-card-box">
+                    <h3 class="notion-box-title">📊 검색 데이터 소스 점유율</h3>
+                    <p class="notion-box-desc">도감 데이터베이스와 AI 백과, 로컬 지식베이스의 응답 비율입니다.</p>
+                    <div id="notion-source-breakdown-list" class="notion-breakdown-list mt-3">
+                        <!-- Dynamic source items -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- 실시간 검색 로그 -->
+            <div class="notion-card-box mt-4">
+                <h3 class="notion-box-title">📑 실시간 검색 로그 (최근 50건)</h3>
+                <div class="notion-table-container mt-2">
+                    <table class="notion-table">
+                        <thead>
+                            <tr>
+                                <th style="width: 180px;">🌱 검색어</th>
+                                <th style="width: 150px;">🏷️ 응답 소스</th>
+                                <th style="width: 160px;">👤 검색자</th>
+                                <th style="width: 180px;">🕒 검색 시간</th>
+                            </tr>
+                        </thead>
+                        <tbody id="notion-search-logs-tbody">
+                            <!-- Dynamic Rows -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tab 3: 설문조사 결과 -->
+        <div id="notion-tab-panel-surveys" class="notion-tab-panel" style="display:none;">
+            <div class="notion-kpi-grid">
+                <div class="notion-kpi-card">
+                    <div class="notion-kpi-title">재사용 의향률</div>
+                    <div id="notion-survey-kpi-reuse" class="notion-kpi-value">-</div>
+                    <div class="notion-kpi-sub">다시 쓸래요 응답 비율</div>
+                </div>
+                <div class="notion-kpi-card">
+                    <div class="notion-kpi-title">검색 속도 평점</div>
+                    <div id="notion-survey-kpi-speed" class="notion-kpi-value">- / 5.0</div>
+                    <div class="notion-kpi-sub">사용자 체감 속도</div>
+                </div>
+                <div class="notion-kpi-card">
+                    <div class="notion-kpi-title">정보 정확도 평점</div>
+                    <div id="notion-survey-kpi-accuracy" class="notion-kpi-value">- / 5.0</div>
+                    <div class="notion-kpi-sub">식물 상식 및 가이드 신뢰도</div>
+                </div>
+            </div>
+
+            <div class="notion-table-container mt-4">
+                <table class="notion-table">
+                    <thead>
+                        <tr>
+                            <th style="width: 140px;">📅 제출 일시</th>
+                            <th style="width: 120px;">🏷️ 유입 경로</th>
+                            <th style="width: 100px;">재방문</th>
+                            <th style="width: 90px;">속도</th>
+                            <th style="width: 90px;">정확도</th>
+                            <th style="width: 120px;">AI 도움 여부</th>
+                            <th>💬 사용자가 남긴 한마디</th>
+                        </tr>
+                    </thead>
+                    <tbody id="notion-survey-tbody">
+                        <!-- Dynamic Rows -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Tab 4: 커뮤니티 신고 -->
+        <div id="notion-tab-panel-reports" class="notion-tab-panel" style="display:none;">
+            <div class="notion-card-box">
+                <h3 class="notion-box-title">🚨 접수된 신고 목록</h3>
+                <p class="notion-box-desc">이용자가 접수한 커뮤니티 게시글 신고 내역을 확인하고 처리합니다.</p>
+                <div class="notion-table-container mt-3">
+                    <table class="notion-table">
+                        <thead>
+                            <tr>
+                                <th style="width: 120px;">상태</th>
+                                <th style="width: 180px;">신고 사유</th>
+                                <th style="width: 180px;">상세 내용</th>
+                                <th style="width: 140px;">신고자 ID</th>
+                                <th style="width: 150px;">신고 일시</th>
+                                <th style="width: 180px; text-align: center;">조치</th>
+                            </tr>
+                        </thead>
+                        <tbody id="notion-reports-tbody">
+                            <!-- Dynamic Rows -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tab 5: 서비스 종합 지표 -->
+        <div id="notion-tab-panel-summary" class="notion-tab-panel" style="display:none;">
+            <div class="notion-card-box">
+                <h3 class="notion-box-title">🌿 Plant!p 서비스 현황</h3>
+                <div class="notion-summary-grid mt-3">
+                    <div class="notion-summary-item">
+                        <span class="label">서버 프레임워크</span>
+                        <span class="val">FastAPI + Uvicorn</span>
+                    </div>
+                    <div class="notion-summary-item">
+                        <span class="label">클라우드 데이터베이스</span>
+                        <span class="val">Supabase PostgreSQL & JSON Fallback</span>
+                    </div>
+                    <div class="notion-summary-item">
+                        <span class="label">AI 식물 탐구 엔진</span>
+                        <span class="val">Google Gemini 2.0 / 1.5 Flash</span>
+                    </div>
+                    <div class="notion-summary-item">
+                        <span class="label">PWA 지원 여부</span>
+                        <span class="val">iOS / Android / Desktop (오프라인 지원)</span>
+                    </div>
+                    <div class="notion-summary-item">
+                        <span class="label">관리자 접근 키워드</span>
+                        <span class="val"><code>aaron</code> (비밀코드)</span>
+                    </div>
+                    <div class="notion-summary-item">
+                        <span class="label">관리자 비밀번호</span>
+                        <span class="val"><code>120809sc</code></span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 3. 회원 정보 수정 팝오버 모달 -->
+<div id="notion-member-edit-modal" class="notion-modal-overlay" style="display:none; z-index:10002;" onclick="closeAdminUserEditOnBackdrop(event)">
+    <div class="notion-edit-card" onclick="event.stopPropagation()">
+        <div class="notion-edit-header">
+            <span class="notion-page-icon">✏️</span>
+            <div>
+                <h3 class="notion-edit-title">회원 정보 수정</h3>
+                <p id="notion-edit-user-id" class="notion-edit-sub">ID: -</p>
+            </div>
+            <button class="notion-close-mini" onclick="closeAdminUserEditModal()">✕</button>
+        </div>
+        <form id="notion-user-edit-form" onsubmit="submitAdminUserEdit(event)" class="mt-4 space-y-3">
+            <input type="hidden" id="notion-edit-target-id">
+            <div class="notion-input-group">
+                <label class="notion-input-label">닉네임</label>
+                <input type="text" id="notion-edit-nickname" class="notion-input" required maxlength="25">
+            </div>
+
+            <div class="notion-input-group">
+                <label class="notion-input-label">칭호 (Title)</label>
+                <div class="notion-select-wrapper">
+                    <select id="notion-edit-title-preset" class="notion-input" onchange="onTitlePresetChange(this.value)">
+                        <option value="새싹">🌱 새싹</option>
+                        <option value="정원사">🪴 정원사</option>
+                        <option value="식물박사">🌿 식물박사</option>
+                        <option value="그리너">🍃 그리너</option>
+                        <option value="플랜트마스터">👑 플랜트마스터</option>
+                        <option value="숲의 요정">🧚 숲의 요정</option>
+                        <option value="custom">✍️ 직접 입력...</option>
+                    </select>
+                </div>
+                <input type="text" id="notion-edit-title-custom" class="notion-input mt-1.5" style="display:none;" placeholder="직접 칭호 입력...">
+            </div>
+
+            <div class="notion-input-group">
+                <label class="notion-input-label">리프 잔액 (현재 잎 수)</label>
+                <input type="number" id="notion-edit-leaf" class="notion-input" min="0" max="9999999" required>
+                <div class="notion-quick-leaf-btns mt-2">
+                    <button type="button" class="notion-tag notion-tag-green" onclick="adjustEditLeaf(50)">+50 잎</button>
+                    <button type="button" class="notion-tag notion-tag-green" onclick="adjustEditLeaf(100)">+100 잎</button>
+                    <button type="button" class="notion-tag notion-tag-green" onclick="adjustEditLeaf(500)">+500 잎</button>
+                    <button type="button" class="notion-tag notion-tag-yellow" onclick="adjustEditLeaf(1000)">+1,000 잎</button>
+                    <button type="button" class="notion-tag notion-tag-red" onclick="adjustEditLeaf(-50)">-50 잎</button>
+                </div>
+            </div>
+
+            <div class="notion-auth-actions mt-5">
+                <button type="button" class="notion-btn notion-btn-secondary" onclick="closeAdminUserEditModal()">취소</button>
+                <button type="submit" id="notion-edit-save-btn" class="notion-btn notion-btn-primary">💾 저장하기</button>
+            </div>
+        </form>
+    </div>
+</div>
+
 <!-- ===================== 토스트 알림 컨테이너 ===================== -->
     <div id="toast-container" aria-live="polite"></div>
 

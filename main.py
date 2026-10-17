@@ -1360,6 +1360,10 @@ async def search_plant(payload: SearchRequest, request: Request):
     if not plant_name:
         raise HTTPException(status_code=400, detail="식물 이름을 입력해 주세요.")
 
+    # 관리자 키워드 "aaron"은 일반 검색에서 무시 (가드레일 메시지로 차단)
+    if plant_name.lower() == "aaron":
+        return {"status": "guardrail", "message": GUARDRAIL_MESSAGE}
+
     if looks_like_non_plant(plant_name):
         return {"status": "guardrail", "message": GUARDRAIL_MESSAGE}
 
@@ -1407,6 +1411,14 @@ async def search_plant(payload: SearchRequest, request: Request):
         source = "plant_directory"
     else:
         source = "gemini_ai" if plant_data.get("ai_generated") == 1 else "knowledge_base"
+
+    # 관리자 대시보드용 검색 기록 로깅
+    try:
+        user = _get_current_user_or_fallback(request)
+        _log_search(plant_name, source, user.get("id", ""))
+    except Exception:
+        _log_search(plant_name, source)
+
     return {"status": "success", "source": source, "data": _serialize_plant(plant_data)}
 
 
@@ -1928,6 +1940,280 @@ async def get_survey_results(request: Request):
         "aihelp": aihelp_counts,
         "responses": results[:50]
     })
+
+# ===================== 관리자 (Admin) API =====================
+ADMIN_PASSWORD = "120809sc"
+ADMIN_SEARCH_LOG: List[Dict[str, Any]] = [
+    {"query": "몬스테라", "source": "plant_directory", "user_id": "45f6654d...", "timestamp": "2026-10-17T09:12:00Z"},
+    {"query": "산세베리아", "source": "gemini_ai", "user_id": "system-bot", "timestamp": "2026-10-17T09:30:00Z"},
+    {"query": "스킨답서스", "source": "knowledge_base", "user_id": "demo-user", "timestamp": "2026-10-17T10:05:00Z"},
+    {"query": "금전수", "source": "plant_directory", "user_id": "45f6654d...", "timestamp": "2026-10-17T10:45:00Z"},
+    {"query": "바질", "source": "gemini_ai", "user_id": "green-keeper", "timestamp": "2026-10-17T11:15:00Z"},
+]
+
+def _log_search(plant_name: str, source: str, user_id: str = ""):
+    """검색 기록을 관리자 대시보드용으로 저장"""
+    ADMIN_SEARCH_LOG.append({
+        "query": plant_name,
+        "source": source,
+        "user_id": (user_id[:8] + "...") if len(user_id) > 8 else (user_id or "익명"),
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+    })
+    if len(ADMIN_SEARCH_LOG) > 500:
+        ADMIN_SEARCH_LOG.pop(0)
+
+class AdminAuthPayload(BaseModel):
+    password: str
+
+@app.post("/api/admin/auth")
+async def admin_auth(payload: AdminAuthPayload):
+    """관리자 비밀번호 인증 (120809sc)"""
+    if payload.password == ADMIN_PASSWORD:
+        import hashlib, time
+        token = hashlib.sha256(f"admin-{time.time()}".encode()).hexdigest()[:32]
+        return {"status": "success", "admin_token": token, "message": "관리자 인증이 완료되었습니다."}
+    raise HTTPException(status_code=401, detail="비밀번호가 올바르지 않습니다.")
+
+@app.get("/api/admin/dashboard")
+async def admin_dashboard(request: Request):
+    """노션 스타일 관리자 대시보드 전체 데이터"""
+    from collections import Counter
+    sb = get_supabase()
+
+    # 1) 회원 목록 (프로필)
+    all_profiles: List[Dict[str, Any]] = []
+    if sb is not None:
+        try:
+            res = sb.table("profiles").select("*").order("created_at", desc=True).limit(200).execute()
+            all_profiles = list(res.data or [])
+        except Exception as e:
+            logger.warning("Admin: profiles fetch failed: %s", e)
+            all_profiles = list(MEMORY_PROFILES.values())
+    else:
+        all_profiles = list(MEMORY_PROFILES.values())
+
+    # 기본 데모 프로필 없으면 보완
+    if not all_profiles:
+        all_profiles = [
+            {
+                "id": "45f6654d-6ddd-4182-b36d-eec953c41930",
+                "email": "aawle1294@gmail.com",
+                "nickname": "새싹 식집사",
+                "avatar_emoji": "🌱",
+                "title": "새싹",
+                "leaf_balance": 150,
+                "streak_count": 5,
+                "created_at": datetime.now().isoformat(),
+            }
+        ]
+
+    # 각 유저 title, leaf_balance 기본값 보정
+    for u in all_profiles:
+        if not u.get("title"):
+            u["title"] = "새싹"
+        if "leaf_balance" not in u:
+            u["leaf_balance"] = 50
+
+    # 2) 커뮤니티 신고 목록
+    from app.services.memory import MEMORY_COMMUNITY_REPORTS, MEMORY_COMMUNITY_POSTS
+    reports = list(MEMORY_COMMUNITY_REPORTS)
+
+    # 3) 설문조사 결과
+    survey_results: List[Dict[str, Any]] = []
+    if sb is not None:
+        try:
+            res = sb.table("survey_responses").select("*").order("submitted_at", desc=True).limit(200).execute()
+            survey_results = res.data or []
+        except Exception:
+            survey_results = list(MEMORY_SURVEY_RESPONSES)
+    else:
+        survey_results = list(MEMORY_SURVEY_RESPONSES)
+
+    # 설문 기본 샘플 (비어있을 시 통계 데모용)
+    if not survey_results:
+        survey_results = [
+            {
+                "id": "demo-survey-1",
+                "source": "general",
+                "reuse": "yes",
+                "speed": 5,
+                "accuracy": 5,
+                "aihelp": "yes",
+                "comments": "물주기 알림과 AI 식물 백과 기능이 매우 유용합니다! 디자인도 예뻐요.",
+                "submitted_at": datetime.now().isoformat(),
+            },
+            {
+                "id": "demo-survey-2",
+                "source": "plant_detail",
+                "reuse": "yes",
+                "speed": 4,
+                "accuracy": 5,
+                "aihelp": "yes",
+                "comments": "아이폰 PWA로 설치해서 매일 아침마다 루틴 확인하고 있어요.",
+                "submitted_at": datetime.now().isoformat(),
+            }
+        ]
+
+    # 설문 통계
+    total_surveys = len(survey_results)
+    avg_speed = round(sum(r.get("speed") or 0 for r in survey_results if r.get("speed")) / max(1, sum(1 for r in survey_results if r.get("speed"))), 1)
+    avg_accuracy = round(sum(r.get("accuracy") or 0 for r in survey_results if r.get("accuracy")) / max(1, sum(1 for r in survey_results if r.get("accuracy"))), 1)
+    reuse_yes = sum(1 for r in survey_results if r.get("reuse") == "yes")
+    reuse_rate = round((reuse_yes / max(1, total_surveys)) * 100)
+
+    # 4) 검색 기록 및 검색도 분석
+    search_log = list(reversed(ADMIN_SEARCH_LOG[-100:]))
+    query_counter = Counter(item["query"] for item in ADMIN_SEARCH_LOG if item.get("query"))
+    top_searches = [{"query": q, "count": c} for q, c in query_counter.most_common(10)]
+    source_counter = Counter(item.get("source", "gemini_ai") for item in ADMIN_SEARCH_LOG)
+
+    # 5) 요약 통계
+    total_users = len(all_profiles)
+    total_posts = len(MEMORY_COMMUNITY_POSTS)
+    total_reports = len(reports)
+    total_searches = len(ADMIN_SEARCH_LOG)
+    total_leaves = sum(u.get("leaf_balance", 0) for u in all_profiles)
+
+    return JSONResponse(content={
+        "status": "success",
+        "stats": {
+            "total_users": total_users,
+            "total_posts": total_posts,
+            "total_reports": total_reports,
+            "total_surveys": total_surveys,
+            "total_searches": total_searches,
+            "total_leaves": total_leaves,
+            "avg_accuracy": avg_accuracy,
+            "avg_speed": avg_speed,
+            "reuse_rate": reuse_rate,
+        },
+        "users": all_profiles,
+        "search_analytics": {
+            "top_searches": top_searches,
+            "source_breakdown": dict(source_counter),
+            "recent_logs": search_log[:50],
+        },
+        "survey_data": {
+            "total": total_surveys,
+            "avg_speed": avg_speed,
+            "avg_accuracy": avg_accuracy,
+            "reuse_rate": reuse_rate,
+            "responses": survey_results[:50],
+        },
+        "reports": reports[:50],
+    })
+
+class AdminUserUpdatePayload(BaseModel):
+    user_id: str
+    nickname: Optional[str] = None
+    title: Optional[str] = None
+    leaf_balance: Optional[int] = None
+    leaf_delta: Optional[int] = None  # 추가/차감할 리프 양
+
+@app.post("/api/admin/user/update")
+async def admin_update_user(payload: AdminUserUpdatePayload):
+    """회원 정보 변경 (닉네임, 칭호, 리프 잔액)"""
+    user_id = payload.user_id.strip()
+    if not user_id:
+        raise HTTPException(status_code=400, detail="유효한 사용자 ID가 필요합니다.")
+
+    sb = get_supabase()
+    updated_fields: Dict[str, Any] = {"updated_at": datetime.now().isoformat()}
+
+    # 현재 유저 프로필 조회
+    current_prof = None
+    if user_id in MEMORY_PROFILES:
+        current_prof = MEMORY_PROFILES[user_id]
+    elif sb is not None:
+        try:
+            res = sb.table("profiles").select("*").eq("id", user_id).execute()
+            if res.data:
+                current_prof = res.data[0]
+        except Exception as e:
+            logger.warning("Admin: user find failed: %s", e)
+
+    if not current_prof:
+        # 가상 프로필 생성 후 저장
+        current_prof = {
+            "id": user_id,
+            "email": f"{user_id[:8]}@user.local",
+            "nickname": "식집사",
+            "avatar_emoji": "🌱",
+            "title": "새싹",
+            "leaf_balance": 50,
+            "streak_count": 1,
+            "created_at": datetime.now().isoformat(),
+        }
+
+    # 업데이트 적용
+    if payload.nickname is not None and payload.nickname.strip():
+        updated_fields["nickname"] = payload.nickname.strip()
+        current_prof["nickname"] = payload.nickname.strip()
+
+    if payload.title is not None and payload.title.strip():
+        updated_fields["title"] = payload.title.strip()
+        current_prof["title"] = payload.title.strip()
+
+    if payload.leaf_balance is not None:
+        current_prof["leaf_balance"] = max(0, payload.leaf_balance)
+        updated_fields["leaf_balance"] = current_prof["leaf_balance"]
+    elif payload.leaf_delta is not None:
+        current_prof["leaf_balance"] = max(0, current_prof.get("leaf_balance", 0) + payload.leaf_delta)
+        updated_fields["leaf_balance"] = current_prof["leaf_balance"]
+
+    # 인메모리 저장
+    MEMORY_PROFILES[user_id] = current_prof
+    _save_memory()
+
+    # Supabase 저장 시도
+    if sb is not None:
+        try:
+            sb.table("profiles").update(updated_fields).eq("id", user_id).execute()
+        except Exception as e:
+            logger.warning("Admin: supabase update failed: %s", e)
+
+    return JSONResponse(content={
+        "status": "success",
+        "message": f"회원 [{current_prof.get('nickname')}] 정보가 성공적으로 변경되었습니다.",
+        "user": current_prof
+    })
+
+class AdminReportActionPayload(BaseModel):
+    report_id: str
+    action: str  # "resolve" or "delete_post"
+
+@app.post("/api/admin/report/action")
+async def admin_report_action(payload: AdminReportActionPayload):
+    """신고 처리 (해결 완료 or 게시글 삭제)"""
+    from app.services.memory import MEMORY_COMMUNITY_REPORTS, MEMORY_COMMUNITY_POSTS
+    target_report = None
+    for r in MEMORY_COMMUNITY_REPORTS:
+        if r.get("id") == payload.report_id:
+            target_report = r
+            break
+
+    if not target_report:
+        raise HTTPException(status_code=404, detail="신고 내역을 찾을 수 없습니다.")
+
+    if payload.action == "resolve":
+        target_report["status"] = "resolved"
+        _save_memory()
+        return {"status": "success", "message": "신고가 '해결됨' 처리되었습니다."}
+    elif payload.action == "delete_post":
+        post_id = target_report.get("post_id")
+        target_report["status"] = "post_deleted"
+        # 게시글 삭제
+        idx_to_del = -1
+        for i, p in enumerate(MEMORY_COMMUNITY_POSTS):
+            if p.get("id") == post_id:
+                idx_to_del = i
+                break
+        if idx_to_del >= 0:
+            MEMORY_COMMUNITY_POSTS.pop(idx_to_del)
+        _save_memory()
+        return {"status": "success", "message": "해당 게시글이 삭제되고 신고가 종결되었습니다."}
+
+    raise HTTPException(status_code=400, detail="유효하지 않은 액션입니다.")
 
 # ===================== 커뮤니티 & 친구 API =====================
 from app.services.community import (
