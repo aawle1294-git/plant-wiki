@@ -1877,6 +1877,7 @@ async def submit_survey(payload: SurveySubmitPayload, request: Request):
     Supabase survey_responses 테이블에 저장하며, 미연결 시 인메모리에 보관.
     """
     record = {
+        "id":               str(uuid.uuid4()),
         "source":           payload.source,
         "reuse":            payload.reuse,
         "speed":            payload.speed,
@@ -1884,10 +1885,16 @@ async def submit_survey(payload: SurveySubmitPayload, request: Request):
         "aihelp":           payload.aihelp,
         "differentiators":  json.dumps(payload.differentiators or [], ensure_ascii=False),
         "comment":          payload.comment or "",
+        "comments":         payload.comment or "",
         "email":            payload.email or request.headers.get("X-Device-Email", ""),
         "submitted_at":     payload.submitted_at or datetime.now(timezone.utc).isoformat(),
         "ip_hint":          request.client.host[:8] + "***" if request.client else "unknown",
     }
+
+    # 항상 영구 메모리 DB에 즉시 보관
+    from app.services.memory import MEMORY_SURVEY_RESPONSES, _save_memory
+    MEMORY_SURVEY_RESPONSES.append(record)
+    _save_memory()
 
     sb = get_supabase()
     if sb:
@@ -1895,28 +1902,24 @@ async def submit_survey(payload: SurveySubmitPayload, request: Request):
             sb.table("survey_responses").insert(record).execute()
             logger.info(f"[Survey] Saved to Supabase: source={payload.source}")
         except Exception as e:
-            logger.warning(f"[Survey] Supabase insert failed, saving to memory: {e}")
-            MEMORY_SURVEY_RESPONSES.append(record)
-    else:
-        MEMORY_SURVEY_RESPONSES.append(record)
-        logger.info(f"[Survey] Saved to memory (no DB): source={payload.source}")
+            logger.warning(f"[Survey] Supabase insert failed (saved to memory): {e}")
 
     return JSONResponse(content={"status": "success", "message": "설문 응답이 저장되었습니다."})
 
 @app.get("/api/survey/results")
 async def get_survey_results(request: Request):
-    """설문 결과 집계 (관리자용 — 향후 인증 추가 예정)"""
+    """설문 결과 집계"""
     sb = get_supabase()
     results = []
     if sb:
         try:
             res = sb.table("survey_responses").select("*").order("submitted_at", desc=True).limit(200).execute()
-            results = res.data or []
+            results = list(res.data or [])
         except Exception as e:
             logger.warning(f"[Survey] Failed to fetch results: {e}")
-            results = MEMORY_SURVEY_RESPONSES
+            results = list(MEMORY_SURVEY_RESPONSES)
     else:
-        results = MEMORY_SURVEY_RESPONSES
+        results = list(MEMORY_SURVEY_RESPONSES)
 
     # 간단 집계
     total = len(results)
@@ -2018,48 +2021,33 @@ async def admin_dashboard(request: Request):
     from app.services.memory import MEMORY_COMMUNITY_REPORTS, MEMORY_COMMUNITY_POSTS
     reports = list(MEMORY_COMMUNITY_REPORTS)
 
-    # 3) 설문조사 결과
+    # 3) 설문조사 결과 (Supabase survey_responses + 로컬 메모리 DB 실제 데이터 병합)
     survey_results: List[Dict[str, Any]] = []
     if sb is not None:
         try:
             res = sb.table("survey_responses").select("*").order("submitted_at", desc=True).limit(200).execute()
-            survey_results = res.data or []
-        except Exception:
-            survey_results = list(MEMORY_SURVEY_RESPONSES)
-    else:
-        survey_results = list(MEMORY_SURVEY_RESPONSES)
+            survey_results = list(res.data or [])
+        except Exception as e:
+            logger.warning("Admin: survey fetch failed: %s", e)
 
-    # 설문 기본 샘플 (비어있을 시 통계 데모용)
-    if not survey_results:
-        survey_results = [
-            {
-                "id": "demo-survey-1",
-                "source": "general",
-                "reuse": "yes",
-                "speed": 5,
-                "accuracy": 5,
-                "aihelp": "yes",
-                "comments": "물주기 알림과 AI 식물 백과 기능이 매우 유용합니다! 디자인도 예뻐요.",
-                "submitted_at": datetime.now().isoformat(),
-            },
-            {
-                "id": "demo-survey-2",
-                "source": "plant_detail",
-                "reuse": "yes",
-                "speed": 4,
-                "accuracy": 5,
-                "aihelp": "yes",
-                "comments": "아이폰 PWA로 설치해서 매일 아침마다 루틴 확인하고 있어요.",
-                "submitted_at": datetime.now().isoformat(),
-            }
-        ]
+    from app.services.memory import MEMORY_SURVEY_RESPONSES
+    existing_ids = {r.get("id") for r in survey_results if r.get("id")}
+    for m in reversed(MEMORY_SURVEY_RESPONSES):
+        if m.get("id") and m.get("id") in existing_ids:
+            continue
+        survey_results.append(m)
 
-    # 설문 통계
+    # 실제 설문 응답 기반 통계 계산
     total_surveys = len(survey_results)
-    avg_speed = round(sum(r.get("speed") or 0 for r in survey_results if r.get("speed")) / max(1, sum(1 for r in survey_results if r.get("speed"))), 1)
-    avg_accuracy = round(sum(r.get("accuracy") or 0 for r in survey_results if r.get("accuracy")) / max(1, sum(1 for r in survey_results if r.get("accuracy"))), 1)
-    reuse_yes = sum(1 for r in survey_results if r.get("reuse") == "yes")
-    reuse_rate = round((reuse_yes / max(1, total_surveys)) * 100)
+    if total_surveys > 0:
+        avg_speed = round(sum(r.get("speed") or 0 for r in survey_results if r.get("speed")) / max(1, sum(1 for r in survey_results if r.get("speed"))), 1)
+        avg_accuracy = round(sum(r.get("accuracy") or 0 for r in survey_results if r.get("accuracy")) / max(1, sum(1 for r in survey_results if r.get("accuracy"))), 1)
+        reuse_yes = sum(1 for r in survey_results if r.get("reuse") == "yes")
+        reuse_rate = round((reuse_yes / total_surveys) * 100)
+    else:
+        avg_speed = 0.0
+        avg_accuracy = 0.0
+        reuse_rate = 0
 
     # 4) 검색 기록 및 검색도 분석
     search_log = list(reversed(ADMIN_SEARCH_LOG[-100:]))

@@ -3475,18 +3475,32 @@
             }
         }
 
-        // 9. 설문조사 결과 탭 렌더링
+        // 9. 설문조사 결과 탭 렌더링 (실제 데이터 연동)
         function renderAdminSurveys(surveyData) {
-            document.getElementById('notion-survey-kpi-reuse').innerText = `${surveyData.reuse_rate || 90}%`;
-            document.getElementById('notion-survey-kpi-speed').innerText = `${surveyData.avg_speed || 4.8} / 5.0`;
-            document.getElementById('notion-survey-kpi-accuracy').innerText = `${surveyData.avg_accuracy || 4.9} / 5.0`;
+            const responses = surveyData.responses || [];
+            const hasData = responses.length > 0;
+
+            document.getElementById('notion-survey-kpi-reuse').innerText = hasData ? `${surveyData.reuse_rate || 0}%` : '0%';
+            document.getElementById('notion-survey-kpi-speed').innerText = hasData ? `${surveyData.avg_speed || 0} / 5.0` : '- / 5.0';
+            document.getElementById('notion-survey-kpi-accuracy').innerText = hasData ? `${surveyData.avg_accuracy || 0} / 5.0` : '- / 5.0';
 
             const tbody = document.getElementById('notion-survey-tbody');
             if (!tbody) return;
 
-            const responses = surveyData.responses || [];
-            if (responses.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="7" style="text-align:center; padding:24px; color:#787774;">접수된 설문 응답이 없습니다.</td></tr>`;
+            if (!hasData) {
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="7" style="text-align:center; padding:36px 20px; color:#787774;">
+                            <div style="font-size:1.8rem; margin-bottom:8px;">📭</div>
+                            <div style="font-weight:700; font-size:0.95rem; color:#37352f; margin-bottom:4px;">아직 접수된 설문 응답이 없습니다. (0건)</div>
+                            <div style="font-size:0.75rem; color:#9b9a97; margin-bottom:14px;">웹사이트 내 설문 팝업이나 인라인 폼을 통해 제출되면 실시간으로 여기에 누적됩니다.</div>
+                            <a href="https://forms.gle/dFwphnR5MTwhUrwP9" target="_blank" rel="noopener noreferrer"
+                               class="notion-btn notion-btn-secondary" style="text-decoration:none; display:inline-flex; align-items:center; gap:6px;">
+                                📋 구글 폼 설문지 응답 확인하기 ↗
+                            </a>
+                        </td>
+                    </tr>
+                `;
                 return;
             }
 
@@ -3504,7 +3518,8 @@
                 else if (r.aihelp === 'same') aiBadge = '<span class="notion-tag notion-tag-blue">😐 비슷함</span>';
                 else if (r.aihelp === 'no') aiBadge = '<span class="notion-tag notion-tag-yellow">🤔 일반 검색</span>';
 
-                const comment = r.comments ? escapeHtml(r.comments) : '<span style="color:#9b9a97; font-style:italic;">(의견 없음)</span>';
+                const commentText = r.comment || r.comments;
+                const comment = commentText ? escapeHtml(commentText) : '<span style="color:#9b9a97; font-style:italic;">(의견 없음)</span>';
 
                 return `
                     <tr>
