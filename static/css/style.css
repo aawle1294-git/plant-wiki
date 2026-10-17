@@ -2503,19 +2503,50 @@
             color: #cf222e;
         }
 
+        .notion-header-download-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            background: #ffffff;
+            color: #37352f;
+            border: 1px solid #e3e2de;
+            padding: 5px 11px;
+            border-radius: 6px;
+            font-size: 0.76rem;
+            font-weight: 600;
+            text-decoration: none;
+            cursor: pointer;
+            transition: all 0.15s ease;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.03);
+            white-space: nowrap;
+        }
+        .notion-header-download-btn:hover {
+            background: #f7f6f5;
+            color: #111;
+            border-color: #d3d1cb;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.06);
+        }
+
         .notion-tabs-nav {
-            margin: 22px 40px 0;
+            position: sticky;
+            top: 0;
+            z-index: 90;
+            background: #ffffff;
+            margin: 16px 0 0;
+            padding: 12px 40px 0;
             display: flex;
             align-items: center;
             gap: 4px;
             border-bottom: 1px solid #e3e2de;
             overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
             scrollbar-width: none;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.02);
         }
         .notion-tabs-nav::-webkit-scrollbar { display: none; }
 
         .notion-tab-btn {
-            display: flex;
+            display: inline-flex;
             align-items: center;
             gap: 6px;
             padding: 8px 14px;
@@ -2529,6 +2560,9 @@
             transition: all 0.15s ease;
             white-space: nowrap;
             border-radius: 6px 6px 0 0;
+            flex-shrink: 0;
+            user-select: none;
+            -webkit-tap-highlight-color: transparent;
         }
         .notion-tab-btn:hover {
             background: #f7f6f5;
@@ -2836,7 +2870,7 @@
             .notion-page-header { padding: 0 20px; }
             .notion-properties-card { margin: 14px 20px 0; }
             .notion-callout { margin: 14px 20px 0; }
-            .notion-tabs-nav { margin: 18px 20px 0; }
+            .notion-tabs-nav { margin: 12px 0 0; padding: 10px 16px 0; }
             .notion-tab-panel { padding: 14px 20px 30px; }
             .notion-kpi-grid { grid-template-columns: 1fr; }
             .notion-grid-2col { grid-template-columns: 1fr; }

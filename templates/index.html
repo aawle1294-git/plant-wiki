@@ -47,7 +47,7 @@
             document.documentElement.dataset.theme = t;
         })();
     </script>
-    <link rel="stylesheet" href="/static/css/style.css?v=20261017_admin_v5">
+    <link rel="stylesheet" href="/static/css/style.css?v=20261018_admin_v6">
 </head>
 <body>
 
@@ -1558,8 +1558,16 @@
                 </div>
                 <div class="notion-title-row">
                     <h1 class="notion-page-title">Plant!p 관리자 워크스페이스</h1>
-                    <div class="notion-header-badge">
-                        <span class="notion-live-dot"></span> Live v2.4
+                    <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+                        <a href="/api/admin/patchnote/download?v=2.3" download="Plant_Wiki_PatchNote_v2.3.md" class="notion-header-download-btn" title="패치노트 v2.3 마크다운 다운로드">
+                            <span>📥</span> v2.3 패치노트 (.md)
+                        </a>
+                        <a href="/api/admin/patchnote/download?v=2.4" download="Plant_Wiki_PatchNote_v2.4.md" class="notion-header-download-btn" title="패치노트 v2.4 마크다운 다운로드">
+                            <span>📥</span> v2.4 (.md)
+                        </a>
+                        <div class="notion-header-badge">
+                            <span class="notion-live-dot"></span> Live v2.4
+                        </div>
                     </div>
                 </div>
             </div>
@@ -1598,27 +1606,27 @@
         </div>
 
         <!-- Notion Database Views (Tabs) -->
-        <div class="notion-tabs-nav">
-            <button class="notion-tab-btn active" onclick="switchAdminTab('users')">
+        <div class="notion-tabs-nav" id="notion-admin-tabs-nav">
+            <button type="button" class="notion-tab-btn active" data-tab="users" onclick="switchAdminTab('users')">
                 <span>👥</span> 회원 관리 & 리프/칭호
                 <span id="notion-tab-user-count" class="notion-tab-count">0</span>
             </button>
-            <button class="notion-tab-btn" onclick="switchAdminTab('search')">
+            <button type="button" class="notion-tab-btn" data-tab="search" onclick="switchAdminTab('search')">
                 <span>🔍</span> 검색도 & 키워드 분석
             </button>
-            <button class="notion-tab-btn" onclick="switchAdminTab('surveys')">
+            <button type="button" class="notion-tab-btn" data-tab="surveys" onclick="switchAdminTab('surveys')">
                 <span>📋</span> 설문조사 결과
                 <span id="notion-tab-survey-count" class="notion-tab-count">0</span>
             </button>
-            <button class="notion-tab-btn" onclick="switchAdminTab('reports')">
+            <button type="button" class="notion-tab-btn" data-tab="reports" onclick="switchAdminTab('reports')">
                 <span>🚨</span> 커뮤니티 신고
                 <span id="notion-tab-report-count" class="notion-tab-count">0</span>
             </button>
-            <button class="notion-tab-btn" onclick="switchAdminTab('summary')">
+            <button type="button" class="notion-tab-btn" data-tab="summary" onclick="switchAdminTab('summary')">
                 <span>📊</span> 서비스 종합 지표
             </button>
             <div class="notion-tab-spacer"></div>
-            <button class="notion-refresh-btn" onclick="loadAdminDashboardData()" title="데이터 새로고침">
+            <button type="button" class="notion-refresh-btn" onclick="loadAdminDashboardData()" title="데이터 새로고침">
                 <span>🔄</span> 새로고침
             </button>
         </div>
@@ -1811,6 +1819,30 @@
                     </div>
                 </div>
             </div>
+
+            <!-- 공식 릴리즈 패치노트 다운로드 섹션 -->
+            <div class="notion-card-box mt-4">
+                <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:12px;">
+                    <div>
+                        <h3 class="notion-box-title">📄 공식 릴리즈 패치노트 다운로드</h3>
+                        <p class="notion-box-desc">Plant!p의 주요 버전별 기능 업데이트, 아키텍처 개편 및 버그 수정 내역 원문(.md)입니다.</p>
+                    </div>
+                    <div style="display:flex; gap:8px; flex-wrap:wrap;">
+                        <a href="/api/admin/patchnote/download?v=2.3" download="Plant_Wiki_PatchNote_v2.3.md" class="notion-btn notion-btn-primary" style="text-decoration:none; display:inline-flex; align-items:center; gap:6px;">
+                            <span>📥</span> v2.3 패치노트 다운로드 (.md)
+                        </a>
+                        <a href="/api/admin/patchnote/download?v=2.4" download="Plant_Wiki_PatchNote_v2.4.md" class="notion-btn notion-btn-secondary" style="text-decoration:none; display:inline-flex; align-items:center; gap:6px;">
+                            <span>📥</span> v2.4 패치노트 다운로드 (.md)
+                        </a>
+                    </div>
+                </div>
+                <div class="notion-callout mt-3" style="margin: 12px 0 0 0;">
+                    <span class="notion-callout-icon">📌</span>
+                    <div class="notion-callout-content">
+                        <strong>패치노트 v2.3 주요 내용:</strong> 하단 플로팅 네비게이션 도입, Supabase/로컬 DB 폴백 안정화, Gemini AI 모델 다중 폴백 안전장치 구축, Docker 배포 가이드.
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
 </div>
@@ -1908,7 +1940,7 @@
     </footer>
 
     <!-- JavaScript Client Application Logic -->
-    <script src="/static/js/main.js?v=20261017_admin_v5"></script>
+    <script src="/static/js/main.js?v=20261018_admin_v6"></script>
 
     <!-- PWA: Service Worker 등록 (오프라인 부팅 & 앱 설치 지원) -->
     <script>

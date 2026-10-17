@@ -3108,6 +3108,7 @@
             const modal = document.getElementById('notion-admin-dashboard-modal');
             if (modal) {
                 modal.style.display = 'flex';
+                switchAdminTab('users');
                 loadAdminDashboardData();
             }
         }
@@ -3167,16 +3168,23 @@
                 if (panel) panel.style.display = (t === tabName) ? 'block' : 'none';
             });
 
-            // 탭 버튼 active 클래스 토글
+            // 탭 버튼 active 클래스 토글 (data-tab 및 onclick 기준 양방향 지원)
             const buttons = document.querySelectorAll('.notion-tabs-nav .notion-tab-btn');
             buttons.forEach(btn => {
+                const btnTab = btn.getAttribute('data-tab') || '';
                 const onclickAttr = btn.getAttribute('onclick') || '';
-                if (onclickAttr.includes(`'${tabName}'`)) {
+                if (btnTab === tabName || onclickAttr.includes(`'${tabName}'`)) {
                     btn.classList.add('active');
                 } else {
                     btn.classList.remove('active');
                 }
             });
+
+            // 긴 탭(검색 로그 등) 스크롤 위치를 상단으로 리셋하여 다른 탭 전환 시 화면 잘림/고립 완벽 방지
+            const workspace = document.querySelector('.notion-workspace-page');
+            if (workspace) {
+                workspace.scrollTop = 0;
+            }
         }
 
         // 6. 회원 관리 탭 렌더링 & 검색

@@ -1977,6 +1977,29 @@ async def admin_auth(payload: AdminAuthPayload):
         return {"status": "success", "admin_token": token, "message": "관리자 인증이 완료되었습니다."}
     raise HTTPException(status_code=401, detail="비밀번호가 올바르지 않습니다.")
 
+@app.get("/api/admin/patchnote/download")
+async def download_patchnote(v: str = "2.3"):
+    """관리자 릴리즈 패치노트 다운로드 API (.md 파일 첨부 전송)"""
+    import os
+    version = "2.4" if str(v).strip().lower() in ["2.4", "v2.4"] else "2.3"
+    filepath = os.path.join(os.path.dirname(__file__), "static", "docs", f"patch_note_v{version}.md")
+    
+    if not os.path.exists(filepath):
+        brain_path = os.path.expanduser(rf"~\.gemini\antigravity-ide\brain\bf3ca243-278d-4afc-b207-c2257fae86ef\patch_note_v{version}.md")
+        if os.path.exists(brain_path):
+            filepath = brain_path
+
+    if os.path.exists(filepath):
+        return FileResponse(
+            path=filepath,
+            filename=f"Plant_Wiki_PatchNote_v{version}.md",
+            media_type="text/markdown; charset=utf-8",
+            headers={
+                "Content-Disposition": f'attachment; filename="Plant_Wiki_PatchNote_v{version}.md"'
+            }
+        )
+    raise HTTPException(status_code=404, detail=f"패치노트 v{version} 파일을 찾을 수 없습니다.")
+
 @app.get("/api/admin/dashboard")
 async def admin_dashboard(request: Request):
     """노션 스타일 관리자 대시보드 전체 데이터"""
