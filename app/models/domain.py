@@ -4,6 +4,8 @@ from pydantic import BaseModel
 class SearchRequest(BaseModel):
     name: str
     force_refresh: bool = False
+    user_id: Optional[str] = None
+    nickname: Optional[str] = None
 
 class AuthRequest(BaseModel):
     email: str

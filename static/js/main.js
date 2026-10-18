@@ -1372,10 +1372,17 @@
             resultContainer.classList.add('hidden');
 
             try {
+                const searchPayload = {
+                    name: plantName,
+                    force_refresh: forceRefresh,
+                    user_id: (currentProfile && currentProfile.id) ? currentProfile.id : (isLoggedIn() ? getStoredEmail() : null),
+                    nickname: (currentProfile && currentProfile.nickname) ? currentProfile.nickname : (isLoggedIn() ? (getStoredEmail() || '식집사') : null)
+                };
+
                 const response = await fetch('/api/search', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json', ...authHeaders() },
-                    body: JSON.stringify({ name: plantName, force_refresh: forceRefresh })
+                    body: JSON.stringify(searchPayload)
                 });
                 if (!response.ok) {
                     const err = await response.json();
@@ -3470,11 +3477,41 @@
 
                         const timeStr = log.timestamp ? log.timestamp.replace('T', ' ').slice(5, 19) : '-';
 
+                        let userHtml = '';
+                        if (log.is_member) {
+                            const avatar = log.user_avatar || '🌱';
+                            const name = log.user_name || '식집사';
+                            const titleBadge = log.user_title ? `<span class="notion-tag ${getTitleTagClass(log.user_title)}" style="font-size:0.68rem; padding:1px 6px;">${escapeHtml(log.user_title)}</span>` : '';
+                            const uid = log.user_id || '';
+                            const shortId = (uid.length > 10) ? (uid.slice(0, 8) + '...') : uid;
+
+                            userHtml = `
+                                <div style="display:flex; flex-direction:column; gap:2px;">
+                                    <div style="display:flex; align-items:center; gap:6px;">
+                                        <span style="font-size:1.05rem;">${avatar}</span>
+                                        <span style="font-weight:600; color:#37352f;">${escapeHtml(name)}</span>
+                                        ${titleBadge}
+                                    </div>
+                                    <div style="font-size:0.71rem; color:#787774; font-family:monospace; margin-left:22px;" title="${escapeHtml(uid)}">
+                                        회원 (${escapeHtml(shortId)})
+                                    </div>
+                                </div>
+                            `;
+                        } else {
+                            userHtml = `
+                                <div style="display:flex; align-items:center; gap:6px;">
+                                    <span style="font-size:1.05rem;">👤</span>
+                                    <span style="font-weight:600; color:#55534e;">데모유저</span>
+                                    <span class="notion-tag notion-tag-gray" style="font-size:0.68rem; padding:1px 6px;">미회원</span>
+                                </div>
+                            `;
+                        }
+
                         return `
                             <tr>
                                 <td style="font-weight:600; color:#37352f;">🌿 ${escapeHtml(log.query || '-')}</td>
                                 <td><span class="notion-tag ${sourceTag}">${sourceName}</span></td>
-                                <td style="color:#787774; font-family:monospace; font-size:0.75rem;">${escapeHtml(log.user_id || '익명')}</td>
+                                <td>${userHtml}</td>
                                 <td style="color:#787774; font-size:0.76rem;">${timeStr}</td>
                             </tr>
                         `;

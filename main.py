@@ -1412,12 +1412,61 @@ async def search_plant(payload: SearchRequest, request: Request):
     else:
         source = "gemini_ai" if plant_data.get("ai_generated") == 1 else "knowledge_base"
 
-    # 관리자 대시보드용 검색 기록 로깅
+    # 관리자 대시보드용 검색 기록 로깅 (회원 프로필 및 데모유저 명확한 구분)
+    req_uid = getattr(payload, "user_id", None) or ""
+    req_nick = getattr(payload, "nickname", None) or ""
+    search_user_id = ""
+    search_user_name = ""
+    search_user_avatar = "🌱"
+    search_user_title = ""
+    is_member = False
+
     try:
-        user = _get_current_user_or_fallback(request)
-        _log_search(plant_name, source, user.get("id", ""))
+        current_u = _get_current_user_or_fallback(request)
+        if current_u and current_u.get("id") and current_u.get("id") != "demo-user":
+            search_user_id = current_u.get("id")
+            is_member = True
     except Exception:
-        _log_search(plant_name, source)
+        pass
+
+    if not search_user_id and req_uid and req_uid != "demo-user":
+        search_user_id = req_uid
+        is_member = True
+
+    sb = get_supabase()
+    if is_member and search_user_id:
+        prof = MEMORY_PROFILES.get(search_user_id)
+        if not prof and sb is not None:
+            try:
+                res = sb.table("profiles").select("*").eq("id", search_user_id).limit(1).execute()
+                if res.data:
+                    prof = res.data[0]
+            except Exception:
+                pass
+        if prof:
+            search_user_name = prof.get("nickname") or req_nick or "식집사"
+            search_user_avatar = prof.get("avatar_emoji") or "🌱"
+            search_user_title = prof.get("title") or "새싹"
+        else:
+            search_user_name = req_nick or "인증회원"
+            search_user_title = "새싹"
+    else:
+        # 미회원인 경우 '데모유저'로 명시
+        is_member = False
+        search_user_name = "데모유저"
+        search_user_avatar = "👤"
+        search_user_title = "미회원"
+        search_user_id = "demo-user"
+
+    _log_search(
+        plant_name=plant_name,
+        source=source,
+        user_id=search_user_id,
+        user_name=search_user_name,
+        user_avatar=search_user_avatar,
+        user_title=search_user_title,
+        is_member=is_member
+    )
 
     return {"status": "success", "source": source, "data": _serialize_plant(plant_data)}
 
@@ -1947,19 +1996,76 @@ async def get_survey_results(request: Request):
 # ===================== 관리자 (Admin) API =====================
 ADMIN_PASSWORD = "120809sc"
 ADMIN_SEARCH_LOG: List[Dict[str, Any]] = [
-    {"query": "몬스테라", "source": "plant_directory", "user_id": "45f6654d...", "timestamp": "2026-10-17T09:12:00Z"},
-    {"query": "산세베리아", "source": "gemini_ai", "user_id": "system-bot", "timestamp": "2026-10-17T09:30:00Z"},
-    {"query": "스킨답서스", "source": "knowledge_base", "user_id": "demo-user", "timestamp": "2026-10-17T10:05:00Z"},
-    {"query": "금전수", "source": "plant_directory", "user_id": "45f6654d...", "timestamp": "2026-10-17T10:45:00Z"},
-    {"query": "바질", "source": "gemini_ai", "user_id": "green-keeper", "timestamp": "2026-10-17T11:15:00Z"},
+    {
+        "query": "몬스테라",
+        "source": "plant_directory",
+        "user_id": "45f6654d-6ddd-4182-b36d-eec953c41930",
+        "user_name": "노션식집사",
+        "user_avatar": "🌱",
+        "user_title": "플랜트마스터",
+        "is_member": True,
+        "timestamp": "2026-10-17T09:12:00Z"
+    },
+    {
+        "query": "산세베리아",
+        "source": "gemini_ai",
+        "user_id": "demo-user",
+        "user_name": "데모유저",
+        "user_avatar": "👤",
+        "user_title": "미회원",
+        "is_member": False,
+        "timestamp": "2026-10-17T09:30:00Z"
+    },
+    {
+        "query": "스킨답서스",
+        "source": "knowledge_base",
+        "user_id": "demo-user",
+        "user_name": "데모유저",
+        "user_avatar": "👤",
+        "user_title": "미회원",
+        "is_member": False,
+        "timestamp": "2026-10-17T10:05:00Z"
+    },
+    {
+        "query": "금전수",
+        "source": "plant_directory",
+        "user_id": "45f6654d-6ddd-4182-b36d-eec953c41930",
+        "user_name": "노션식집사",
+        "user_avatar": "🌱",
+        "user_title": "플랜트마스터",
+        "is_member": True,
+        "timestamp": "2026-10-17T10:45:00Z"
+    },
+    {
+        "query": "바질",
+        "source": "gemini_ai",
+        "user_id": "green-keeper",
+        "user_name": "초록지기",
+        "user_avatar": "🌿",
+        "user_title": "정원사",
+        "is_member": True,
+        "timestamp": "2026-10-17T11:15:00Z"
+    },
 ]
 
-def _log_search(plant_name: str, source: str, user_id: str = ""):
+def _log_search(
+    plant_name: str,
+    source: str,
+    user_id: str = "",
+    user_name: str = "",
+    user_avatar: str = "",
+    user_title: str = "",
+    is_member: bool = False
+):
     """검색 기록을 관리자 대시보드용으로 저장"""
     ADMIN_SEARCH_LOG.append({
         "query": plant_name,
         "source": source,
-        "user_id": (user_id[:8] + "...") if len(user_id) > 8 else (user_id or "익명"),
+        "user_id": user_id or ("demo-user" if not is_member else "member"),
+        "user_name": user_name or ("식집사" if is_member else "데모유저"),
+        "user_avatar": user_avatar or ("🌱" if is_member else "👤"),
+        "user_title": user_title or ("회원" if is_member else "미회원"),
+        "is_member": is_member,
         "timestamp": datetime.now(timezone.utc).isoformat(),
     })
     if len(ADMIN_SEARCH_LOG) > 500:
@@ -2072,8 +2178,50 @@ async def admin_dashboard(request: Request):
         avg_accuracy = 0.0
         reuse_rate = 0
 
-    # 4) 검색 기록 및 검색도 분석
-    search_log = list(reversed(ADMIN_SEARCH_LOG[-100:]))
+    # 4) 검색 기록 및 검색도 분석 (회원 닉네임 매칭 및 미회원 '데모유저' 처리)
+    profile_lookup = {p["id"]: p for p in all_profiles if p.get("id")}
+    for m_id, m_p in MEMORY_PROFILES.items():
+        if m_id not in profile_lookup:
+            profile_lookup[m_id] = m_p
+
+    enriched_search_logs = []
+    for raw_item in reversed(ADMIN_SEARCH_LOG[-100:]):
+        item = dict(raw_item)
+        uid = item.get("user_id", "")
+        uname = item.get("user_name", "")
+        is_mem = item.get("is_member", False)
+
+        # ID로 프로필 매칭 시도 (전체 ID 또는 앞 8글자 접두사 매칭)
+        matched_prof = profile_lookup.get(uid)
+        if not matched_prof and uid and uid != "demo-user":
+            clean_uid = uid.replace("...", "").strip()
+            for p_id, p_obj in profile_lookup.items():
+                if p_id == clean_uid or p_id.startswith(clean_uid) or clean_uid.startswith(p_id[:8]):
+                    matched_prof = p_obj
+                    break
+
+        if matched_prof:
+            item["is_member"] = True
+            item["user_name"] = matched_prof.get("nickname") or uname or "식집사"
+            item["user_avatar"] = matched_prof.get("avatar_emoji") or "🌱"
+            item["user_title"] = matched_prof.get("title") or "새싹"
+            item["user_email"] = matched_prof.get("email") or ""
+            item["user_id"] = matched_prof.get("id") or uid
+        elif is_mem and uname and uname not in ["demo-user", "데모유저", "익명", "system-bot"]:
+            item["is_member"] = True
+            item["user_name"] = uname
+            item["user_avatar"] = item.get("user_avatar") or "🌱"
+            item["user_title"] = item.get("user_title") or "회원"
+        else:
+            # 미회원인 경우 '데모유저'로 통일
+            item["is_member"] = False
+            item["user_name"] = "데모유저"
+            item["user_avatar"] = "👤"
+            item["user_title"] = "미회원"
+            item["user_id"] = "demo-user"
+
+        enriched_search_logs.append(item)
+
     query_counter = Counter(item["query"] for item in ADMIN_SEARCH_LOG if item.get("query"))
     top_searches = [{"query": q, "count": c} for q, c in query_counter.most_common(10)]
     source_counter = Counter(item.get("source", "gemini_ai") for item in ADMIN_SEARCH_LOG)
@@ -2102,7 +2250,7 @@ async def admin_dashboard(request: Request):
         "search_analytics": {
             "top_searches": top_searches,
             "source_breakdown": dict(source_counter),
-            "recent_logs": search_log[:50],
+            "recent_logs": enriched_search_logs[:50],
         },
         "survey_data": {
             "total": total_surveys,
