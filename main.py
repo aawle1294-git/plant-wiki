@@ -10,7 +10,7 @@ from datetime import datetime, date, timedelta, timezone
 from typing import Optional, Dict, Any, List
 
 from fastapi import FastAPI, HTTPException, Request
-from fastapi.responses import HTMLResponse, JSONResponse, FileResponse, RedirectResponse
+from fastapi.responses import HTMLResponse, JSONResponse, FileResponse, RedirectResponse, PlainTextResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel
@@ -68,6 +68,16 @@ async def service_worker():
         headers={"Service-Worker-Allowed": "/", "Cache-Control": "no-cache"},
     )
 
+# 구글 애드센스 및 이조익(Ezoic) 공식 ads.txt 엔드포인트
+ADS_TXT_PATH = os.path.join(STATIC_DIR, "ads.txt")
+
+@app.get("/ads.txt", response_class=PlainTextResponse)
+async def serve_ads_txt():
+    if os.path.exists(ADS_TXT_PATH):
+        with open(ADS_TXT_PATH, "r", encoding="utf-8") as f:
+            return f.read()
+    return "# Plant!p ads.txt\n"
+
 # 서버 슬립 방지용 ping 엔드포인트 (cron-job.org 등 외부 핑봇 전용)
 @app.get("/ping")
 async def ping():
@@ -110,7 +120,7 @@ SUPABASE_KEY = os.environ.get("SUPABASE_ANON_KEY", "").strip()
 
 from app.services.database import get_supabase, require_supabase, user_client
 from app.core.deps import get_current_user, get_current_user_or_fallback
-from app.services.memory import MEMORY_HISTORY, MEMORY_PROFILES, MEMORY_LEAF_TX, MEMORY_WATERING_SCHEDULES, _save_memory
+from app.services.memory import MEMORY_HISTORY, MEMORY_PROFILES, MEMORY_LEAF_TX, MEMORY_WATERING_SCHEDULES, MEMORY_ADS_CONFIG, _save_memory
 from app.services.profile import (
     ensure_profile as _ensure_profile,
     update_profile as _update_profile,
@@ -2112,32 +2122,41 @@ async def admin_dashboard(request: Request):
     from collections import Counter
     sb = get_supabase()
 
-    # 1) 회원 목록 (프로필)
-    all_profiles: List[Dict[str, Any]] = []
+    # 1) 회원 목록 (프로필): Supabase와 MEMORY_PROFILES를 통합하여 최신 상태 영구 유지
+    profiles_by_id: Dict[str, Dict[str, Any]] = {}
     if sb is not None:
         try:
             res = sb.table("profiles").select("*").order("created_at", desc=True).limit(200).execute()
-            all_profiles = list(res.data or [])
+            for p in (res.data or []):
+                if p.get("id"):
+                    profiles_by_id[p["id"]] = dict(p)
         except Exception as e:
             logger.warning("Admin: profiles fetch failed: %s", e)
-            all_profiles = list(MEMORY_PROFILES.values())
-    else:
-        all_profiles = list(MEMORY_PROFILES.values())
 
-    # 기본 데모 프로필 없으면 보완
-    if not all_profiles:
-        all_profiles = [
-            {
-                "id": "45f6654d-6ddd-4182-b36d-eec953c41930",
-                "email": "aawle1294@gmail.com",
-                "nickname": "새싹 식집사",
-                "avatar_emoji": "🌱",
-                "title": "새싹",
-                "leaf_balance": 150,
-                "streak_count": 5,
-                "created_at": datetime.now().isoformat(),
-            }
-        ]
+    # MEMORY_PROFILES의 최신 수정 데이터를 병합 (로컬 수정사항 우선)
+    for uid, p in MEMORY_PROFILES.items():
+        if uid in profiles_by_id:
+            profiles_by_id[uid].update(dict(p))
+        else:
+            profiles_by_id[uid] = dict(p)
+
+    # 기본 데모/관리자 프로필 보장
+    default_admin_id = "45f6654d-6ddd-4182-b36d-eec953c41930"
+    if not profiles_by_id:
+        profiles_by_id[default_admin_id] = {
+            "id": default_admin_id,
+            "email": "aawle1294@gmail.com",
+            "nickname": "노션식집사",
+            "avatar_emoji": "🌱",
+            "title": "플랜트마스터",
+            "leaf_balance": 777,
+            "streak_count": 5,
+            "created_at": datetime.now().isoformat(),
+        }
+        MEMORY_PROFILES[default_admin_id] = profiles_by_id[default_admin_id]
+        _save_memory()
+
+    all_profiles = list(profiles_by_id.values())
 
     # 각 유저 title, leaf_balance 기본값 보정
     for u in all_profiles:
@@ -2145,6 +2164,7 @@ async def admin_dashboard(request: Request):
             u["title"] = "새싹"
         if "leaf_balance" not in u:
             u["leaf_balance"] = 50
+
 
     # 2) 커뮤니티 신고 목록
     from app.services.memory import MEMORY_COMMUNITY_REPORTS, MEMORY_COMMUNITY_POSTS
@@ -2233,6 +2253,15 @@ async def admin_dashboard(request: Request):
     total_searches = len(ADMIN_SEARCH_LOG)
     total_leaves = sum(u.get("leaf_balance", 0) for u in all_profiles)
 
+    # 6) ads.txt 내용 읽기
+    ads_txt_content = ""
+    if os.path.exists(ADS_TXT_PATH):
+        try:
+            with open(ADS_TXT_PATH, "r", encoding="utf-8") as f:
+                ads_txt_content = f.read()
+        except Exception:
+            pass
+
     return JSONResponse(content={
         "status": "success",
         "stats": {
@@ -2260,6 +2289,8 @@ async def admin_dashboard(request: Request):
             "responses": survey_results[:50],
         },
         "reports": reports[:50],
+        "ads_config": MEMORY_ADS_CONFIG,
+        "ads_txt": ads_txt_content,
     })
 
 class AdminUserUpdatePayload(BaseModel):
@@ -2373,6 +2404,51 @@ async def admin_report_action(payload: AdminReportActionPayload):
         return {"status": "success", "message": "해당 게시글이 삭제되고 신고가 종결되었습니다."}
 
     raise HTTPException(status_code=400, detail="유효하지 않은 액션입니다.")
+
+# ===================== 광고 & 수익화 (Ezoic / Google AdSense) API =====================
+@app.get("/api/ads/config")
+async def get_public_ads_config():
+    """웹 프론트엔드 광고 플레이스홀더 및 스크립트 설정 조회"""
+    return JSONResponse(content={
+        "status": "success",
+        "config": MEMORY_ADS_CONFIG
+    })
+
+class AdminAdsConfigPayload(BaseModel):
+    enabled: Optional[bool] = None
+    mode: Optional[str] = None  # 'off', 'demo', 'live'
+    ezoic_publisher_id: Optional[str] = None
+    adsense_client_id: Optional[str] = None
+    auto_ads: Optional[bool] = None
+
+class AdminAdsTxtPayload(BaseModel):
+    content: str
+
+@app.post("/api/admin/ads/config")
+async def update_admin_ads_config(payload: AdminAdsConfigPayload):
+    """관리자 광고 송출 모드 및 퍼블리셔 ID 실시간 저장"""
+    updates = payload.model_dump(exclude_unset=True)
+    MEMORY_ADS_CONFIG.update(updates)
+    _save_memory()
+    return JSONResponse(content={
+        "status": "success",
+        "message": "광고 & 수익화 설정이 성공적으로 저장되었습니다. 💰",
+        "config": MEMORY_ADS_CONFIG
+    })
+
+@app.post("/api/admin/ads/txt")
+async def update_admin_ads_txt(payload: AdminAdsTxtPayload):
+    """관리자 ads.txt 실시간 저장 및 반영"""
+    try:
+        with open(ADS_TXT_PATH, "w", encoding="utf-8") as f:
+            f.write(payload.content)
+        return JSONResponse(content={
+            "status": "success",
+            "message": "ads.txt 파일이 성공적으로 저장되었습니다. 📄"
+        })
+    except Exception as e:
+        logger.error(f"Failed to write ads.txt: {e}")
+        raise HTTPException(status_code=500, detail="ads.txt 파일 저장 실패")
 
 # ===================== 커뮤니티 & 친구 API =====================
 from app.services.community import (

@@ -23,10 +23,12 @@ def require_supabase():
         raise HTTPException(status_code=500, detail="Supabase 설정이 안 되어 있습니다.")
 
 def user_client(token: str):
-    """Create a Supabase client with the user's JWT token attached."""
+    """Create a Supabase client with the user's JWT token attached if valid."""
     client = create_client(SUPABASE_URL, SUPABASE_KEY)
-    try:
-        client.postgrest.auth(token)
-    except Exception as e:
-        logger.warning("postgrest auth attach failed: %s", e)
+    if token and isinstance(token, str) and token.count(".") == 2:
+        try:
+            client.postgrest.auth(token)
+        except Exception as e:
+            logger.warning("postgrest auth attach failed: %s", e)
     return client
+

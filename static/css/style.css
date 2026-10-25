@@ -2357,6 +2357,7 @@
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
             animation: notionCardPop 0.25s cubic-bezier(0.16, 1, 0.3, 1);
             position: relative;
+            min-width: 0;
         }
 
         .notion-cover {
@@ -2427,12 +2428,15 @@
             justify-content: space-between;
             gap: 12px;
             margin-top: 2px;
+            flex-wrap: wrap;
         }
         .notion-page-title {
             font-size: 1.75rem;
             font-weight: 700;
             color: #37352f;
             letter-spacing: -0.025em;
+            min-width: 0;
+            white-space: nowrap;
         }
         .notion-header-badge {
             display: inline-flex;
@@ -2542,6 +2546,8 @@
             -webkit-overflow-scrolling: touch;
             scrollbar-width: none;
             box-shadow: 0 2px 4px rgba(0,0,0,0.02);
+            min-height: 46px;
+            flex-shrink: 0;
         }
         .notion-tabs-nav::-webkit-scrollbar { display: none; }
 
@@ -2867,15 +2873,87 @@
                 max-height: 100vh;
                 border-radius: 0;
             }
-            .notion-page-header { padding: 0 20px; }
-            .notion-properties-card { margin: 14px 20px 0; }
-            .notion-callout { margin: 14px 20px 0; }
-            .notion-tabs-nav { margin: 12px 0 0; padding: 10px 16px 0; }
-            .notion-tab-panel { padding: 14px 20px 30px; }
+            .notion-page-header { padding: 0 16px; gap: 10px; }
+            .notion-big-icon { font-size: 38px; padding: 3px; }
+            .notion-page-title { font-size: 1.25rem; }
+            .notion-title-row { flex-direction: column; align-items: flex-start; gap: 8px; }
+            .notion-properties-card { margin: 14px 16px 0; padding: 10px 14px; gap: 8px 16px; }
+            .notion-callout { margin: 14px 16px 0; font-size: 0.78rem; padding: 12px 14px; }
+            .notion-tabs-nav { margin: 12px 0 0; padding: 10px 12px 0; gap: 2px; }
+            .notion-tab-btn { padding: 7px 10px; font-size: 0.74rem; }
+            .notion-tab-panel { padding: 14px 16px 30px; }
             .notion-kpi-grid { grid-template-columns: 1fr; }
             .notion-grid-2col { grid-template-columns: 1fr; }
             .notion-summary-grid { grid-template-columns: 1fr; }
+            .notion-db-toolbar { flex-direction: column; align-items: stretch; gap: 8px; }
+            .notion-db-search-box { width: 100%; }
+            .notion-header-download-btn { padding: 4px 8px; font-size: 0.7rem; }
         }
+
+        @media (max-width: 1024px) and (min-width: 769px) {
+            .notion-page-title { font-size: 1.4rem; }
+            .notion-tabs-nav { padding: 10px 24px 0; }
+            .notion-tab-panel { padding: 16px 24px 36px; }
+            .notion-page-header { padding: 0 24px; }
+            .notion-properties-card { margin: 16px 24px 0; }
+            .notion-callout { margin: 14px 24px 0; }
+        }
+
+        /* ============ Ezoic & Google AdSense 광고 슬롯 스타일 ============ */
+        .ad-slot-wrapper {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            width: 100%;
+            margin: 14px auto;
+            overflow: hidden;
+            transition: all 0.3s ease;
+        }
+        .ad-slot-wrapper.hidden {
+            display: none !important;
+        }
+        .ezoic-ad-box {
+            width: 100%;
+            min-height: 90px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+            position: relative;
+            border-radius: 18px;
+            background: var(--tile-em-bg);
+            border: 1px dashed var(--tile-em-bd);
+            transition: all 0.25s ease;
+        }
+        .ezoic-ad-demo-card {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 18px 24px;
+            gap: 6px;
+            width: 100%;
+            color: var(--muted);
+            font-size: 0.82rem;
+        }
+        .ezoic-ad-demo-badge {
+            background: linear-gradient(135deg, #10b981, #059669);
+            color: white;
+            font-size: 10px;
+            font-weight: 800;
+            padding: 3px 10px;
+            border-radius: 9999px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+        }
+        .ezoic-ad-box:hover {
+            border-color: #10b981;
+            background: rgba(16, 185, 129, 0.05);
+        }
+
 
 
 

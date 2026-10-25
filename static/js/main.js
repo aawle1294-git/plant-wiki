@@ -397,17 +397,17 @@
                 if (prev.streak_count !== undefined && (merged.streak_count === undefined || merged.streak_count < prev.streak_count)) {
                     merged.streak_count = prev.streak_count;
                 }
-                // 획득한 칭호 보존
-                if (prev.title && prev.title !== '새싹' && (!merged.title || merged.title === '새싹')) {
+                // 획득한 칭호, 닉네임, 아바타 보존 (새 값이 누락된 경우에만 이전 캐시 값 사용)
+                if (!merged.title && prev.title) {
                     merged.title = prev.title;
                 }
-                // 커스텀 닉네임 및 아바타 보존
-                if (prev.nickname && prev.nickname !== '새싹 식집사' && (!merged.nickname || merged.nickname === '새싹 식집사')) {
+                if (!merged.nickname && prev.nickname) {
                     merged.nickname = prev.nickname;
                 }
-                if (prev.avatar_emoji && prev.avatar_emoji !== '🌱' && (!merged.avatar_emoji || merged.avatar_emoji === '🌱')) {
+                if (!merged.avatar_emoji && prev.avatar_emoji) {
                     merged.avatar_emoji = prev.avatar_emoji;
                 }
+
                 // 소유 아이템 목록 영구 보존
                 const localOwned = JSON.parse(localStorage.getItem('plantwiki_owned_items') || '[]');
                 const combinedOwned = Array.from(new Set([...(prev.owned_items || []), ...(profile.owned_items || []), ...localOwned]));
@@ -747,7 +747,17 @@
                     saveProfileCache(currentProfile);
                     updateProfileUI(currentProfile);
                     toggleAvatarPicker();
+                    if (typeof adminState !== 'undefined' && adminState && adminState.users) {
+                        const uIdx = adminState.users.findIndex(u => u.id === currentProfile.id || (currentProfile.email && u.email === currentProfile.email));
+                        if (uIdx >= 0) {
+                            adminState.users[uIdx].avatar_emoji = currentProfile.avatar_emoji;
+                            if (typeof filterAdminUsers === 'function') filterAdminUsers();
+                        }
+                    }
                     showToast(`아바타가 ${emoji}(으)로 변경되었습니다! 🌿`, 'success');
+                } else {
+                    const err = await res.json().catch(() => ({}));
+                    showToast(err.detail || '아바타 변경에 실패했습니다.', 'error');
                 }
             } catch (err) {
                 showToast('아바타 변경에 실패했습니다.', 'error');
@@ -772,9 +782,16 @@
                     currentProfile = data.data;
                     saveProfileCache(currentProfile);
                     updateProfileUI(currentProfile);
+                    if (typeof adminState !== 'undefined' && adminState && adminState.users) {
+                        const uIdx = adminState.users.findIndex(u => u.id === currentProfile.id || (currentProfile.email && u.email === currentProfile.email));
+                        if (uIdx >= 0) {
+                            adminState.users[uIdx].nickname = currentProfile.nickname;
+                            if (typeof filterAdminUsers === 'function') filterAdminUsers();
+                        }
+                    }
                     showToast(`닉네임이 '${newNick}'(으)로 저장되었습니다! ✨`, 'success');
                 } else {
-                    const err = await res.json();
+                    const err = await res.json().catch(() => ({}));
                     showToast(err.detail || '닉네임 저장에 실패했습니다.', 'error');
                 }
             } catch (err) {
@@ -3037,6 +3054,9 @@
                     }
                 });
             }
+
+            // 광고 & 수익화 시스템 초기화
+            initAdSystem();
         });
 
         // 2. 관리자 인증 모달 컨트롤
@@ -3143,6 +3163,8 @@
                 adminState.survey_data = data.survey_data || { total: 0, avg_speed: 5, avg_accuracy: 5, reuse_rate: 100, responses: [] };
                 adminState.reports = data.reports || [];
                 adminState.stats = data.stats || {};
+                adminState.ads_config = data.ads_config || { enabled: false, mode: 'demo', ezoic_publisher_id: '', adsense_client_id: '', auto_ads: false };
+                adminState.ads_txt = data.ads_txt || '';
 
                 // 상단 프로퍼티 업데이트
                 document.getElementById('notion-stat-users').innerText = `${adminState.stats.total_users || adminState.users.length}명`;
@@ -3160,6 +3182,7 @@
                 renderAdminSearchAnalytics(adminState.search_analytics, adminState.stats);
                 renderAdminSurveys(adminState.survey_data);
                 renderAdminReports(adminState.reports);
+                renderAdminAdsSettings(adminState.ads_config, adminState.ads_txt);
 
             } catch (err) {
                 console.error('Admin Dashboard Load Error:', err);
@@ -3169,7 +3192,7 @@
 
         // 5. 탭 전환
         function switchAdminTab(tabName) {
-            const tabs = ['users', 'search', 'surveys', 'reports', 'summary'];
+            const tabs = ['users', 'search', 'surveys', 'reports', 'monetization', 'summary'];
             tabs.forEach(t => {
                 const panel = document.getElementById(`notion-tab-panel-${t}`);
                 if (panel) panel.style.display = (t === tabName) ? 'block' : 'none';
@@ -3376,16 +3399,18 @@
                     adminState.users[userIdx] = { ...adminState.users[userIdx], ...data.user };
                 }
 
-                // 현재 접속 중인 사용자가 수정된 본인인 경우 앱 UI 갱신
-                if (currentUser && currentUser.id === targetId) {
-                    currentUser.nickname = nickname;
-                    currentUser.title = title;
-                    currentUser.leaf_balance = leaf;
-                    updateProfileUI(currentUser);
+                // 현재 접속 중인 사용자가 수정된 본인인 경우 앱 UI 및 로컬 캐시 갱신
+                if (typeof currentProfile !== 'undefined' && currentProfile && (currentProfile.id === targetId || (data.user && currentProfile.email && currentProfile.email === data.user.email))) {
+                    currentProfile.nickname = nickname;
+                    currentProfile.title = title;
+                    currentProfile.leaf_balance = leaf;
+                    saveProfileCache(currentProfile);
+                    updateProfileUI(currentProfile);
                 }
 
                 filterAdminUsers();
                 closeAdminUserEditModal();
+
             } catch (err) {
                 showToast(err.message || '오류가 발생했습니다.', 'error');
             } finally {
@@ -3644,6 +3669,211 @@
                 loadAdminDashboardData();
             } catch (err) {
                 showToast(err.message || '오류가 발생했습니다.', 'error');
+            }
+        }
+
+        // ===================== 11. 광고 & 수익화 (Ezoic / Google AdSense) =====================
+        function renderAdminAdsSettings(config, adsTxt) {
+            if (!config) config = { mode: 'demo', ezoic_publisher_id: '', adsense_client_id: '' };
+            const modeSelect = document.getElementById('notion-ads-mode-select');
+            const ezoicInput = document.getElementById('notion-ads-ezoic-id');
+            const adsenseInput = document.getElementById('notion-ads-adsense-id');
+            const badgeEl = document.getElementById('notion-ads-status-badge');
+            const txtArea = document.getElementById('notion-ads-txt-content');
+
+            if (modeSelect) modeSelect.value = config.mode || 'demo';
+            if (ezoicInput) ezoicInput.value = config.ezoic_publisher_id || '';
+            if (adsenseInput) adsenseInput.value = config.adsense_client_id || '';
+            if (txtArea && adsTxt !== undefined) txtArea.value = adsTxt;
+
+            if (badgeEl) {
+                if (config.mode === 'live') {
+                    badgeEl.innerText = '⚡ 라이브 실송출 중';
+                    badgeEl.style.color = '#0284c7';
+                } else if (config.mode === 'off') {
+                    badgeEl.innerText = '🚫 전체 광고 비활성';
+                    badgeEl.style.color = '#dc2626';
+                } else {
+                    badgeEl.innerText = '🌱 데모 미리보기';
+                    badgeEl.style.color = '#10b981';
+                }
+            }
+        }
+
+        async function saveAdminAdsConfig(e) {
+            if (e) e.preventDefault();
+            const btn = document.getElementById('notion-ads-config-btn');
+            const mode = document.getElementById('notion-ads-mode-select')?.value || 'demo';
+            const ezoic_publisher_id = document.getElementById('notion-ads-ezoic-id')?.value.trim() || '';
+            const adsense_client_id = document.getElementById('notion-ads-adsense-id')?.value.trim() || '';
+
+            if (btn) {
+                btn.disabled = true;
+                btn.innerText = '저장 중...';
+            }
+
+            try {
+                const res = await fetch('/api/admin/ads/config', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        mode: mode,
+                        enabled: mode !== 'off',
+                        ezoic_publisher_id: ezoic_publisher_id,
+                        adsense_client_id: adsense_client_id
+                    })
+                });
+                const data = await res.json();
+                if (!res.ok) throw new Error(data.detail || '설정 저장에 실패했습니다.');
+
+                showToast(data.message || '광고 설정이 저장되었습니다. 💰', 'success');
+                if (data.config) {
+                    adminState.ads_config = data.config;
+                    renderAdminAdsSettings(adminState.ads_config, adminState.ads_txt);
+                    renderAdPlaceholders(adminState.ads_config);
+                }
+            } catch (err) {
+                showToast(err.message || '오류가 발생했습니다.', 'error');
+            } finally {
+                if (btn) {
+                    btn.disabled = false;
+                    btn.innerText = '💾 광고 설정 저장하기';
+                }
+            }
+        }
+
+        async function saveAdminAdsTxt(e) {
+            if (e) e.preventDefault();
+            const btn = document.getElementById('notion-ads-txt-btn');
+            const content = document.getElementById('notion-ads-txt-content')?.value || '';
+
+            if (btn) {
+                btn.disabled = true;
+                btn.innerText = '저장 중...';
+            }
+
+            try {
+                const res = await fetch('/api/admin/ads/txt', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ content: content })
+                });
+                const data = await res.json();
+                if (!res.ok) throw new Error(data.detail || 'ads.txt 저장 실패');
+
+                showToast(data.message || 'ads.txt가 저장되었습니다. 📄', 'success');
+                adminState.ads_txt = content;
+            } catch (err) {
+                showToast(err.message || '오류가 발생했습니다.', 'error');
+            } finally {
+                if (btn) {
+                    btn.disabled = false;
+                    btn.innerText = '💾 ads.txt 파일 저장';
+                }
+            }
+        }
+
+        // ============ Ezoic & AdSense 프론트엔드 광고 시스템 ============
+        let currentAdsConfig = { enabled: false, mode: 'demo', ezoic_publisher_id: '', adsense_client_id: '' };
+
+        async function initAdSystem() {
+            try {
+                const res = await fetch('/api/ads/config');
+                const data = await res.json();
+                if (data && data.config) {
+                    currentAdsConfig = data.config;
+                    renderAdPlaceholders(currentAdsConfig);
+                }
+            } catch (e) {
+                console.warn('Ad system config load fallback to demo mode:', e);
+                renderAdPlaceholders({ enabled: true, mode: 'demo' });
+            }
+        }
+
+        function renderAdPlaceholders(cfg) {
+            const topWrap = document.getElementById('ezoic-ad-top-wrapper');
+            const midWrap = document.getElementById('ezoic-ad-mid-wrapper');
+            const btmWrap = document.getElementById('ezoic-ad-bottom-wrapper');
+
+            const p101 = document.getElementById('ezoic-pub-ad-placeholder-101');
+            const p102 = document.getElementById('ezoic-pub-ad-placeholder-102');
+            const p103 = document.getElementById('ezoic-pub-ad-placeholder-103');
+
+            if (!cfg || cfg.mode === 'off' || cfg.enabled === false) {
+                if (topWrap) topWrap.classList.add('hidden');
+                if (midWrap) midWrap.classList.add('hidden');
+                if (btmWrap) btmWrap.classList.add('hidden');
+                return;
+            }
+
+            // 활성화 상태인 경우 표시
+            if (topWrap) topWrap.classList.remove('hidden');
+            if (midWrap) midWrap.classList.remove('hidden');
+            if (btmWrap) btmWrap.classList.remove('hidden');
+
+            if (cfg.mode === 'demo') {
+                if (p101) {
+                    p101.innerHTML = `
+                        <div class="ezoic-ad-demo-card">
+                            <span class="ezoic-ad-demo-badge">🌱 Ezoic AI Slot 101</span>
+                            <div style="font-weight:700; color:var(--text); font-size:0.86rem;">상단 리더보드 광고 영역 (728x90 / 반응형)</div>
+                            <span style="font-size:0.75rem; opacity:0.8;">방문자가 첫 화면에서 마주하는 고수익 AI 최적화 슬롯</span>
+                        </div>
+                    `;
+                }
+                if (p102) {
+                    p102.innerHTML = `
+                        <div class="ezoic-ad-demo-card" style="padding:14px;">
+                            <span class="ezoic-ad-demo-badge" style="background:linear-gradient(135deg, #0284c7, #0369a1);">🌱 Ezoic AI Slot 102</span>
+                            <div style="font-weight:700; color:var(--text); font-size:0.84rem;">도감 본문 중간 인피드 광고 영역 (300x250 / 네이티브)</div>
+                            <span style="font-size:0.75rem; opacity:0.8;">식물 정보 탐색 중 자연스럽게 노출되어 클릭률(CTR)과 체류시간 극대화</span>
+                        </div>
+                    `;
+                }
+                if (p103) {
+                    p103.innerHTML = `
+                        <div class="ezoic-ad-demo-card">
+                            <span class="ezoic-ad-demo-badge" style="background:linear-gradient(135deg, #8b5cf6, #7c3aed);">🌱 Ezoic AI Slot 103</span>
+                            <div style="font-weight:700; color:var(--text); font-size:0.86rem;">하단 앵커 / 피드 광고 영역 (336x280 / 반응형)</div>
+                            <span style="font-size:0.75rem; opacity:0.8;">결과 열람 완료 후 다음 액션 전 EPMV를 보조하는 피드형 슬롯</span>
+                        </div>
+                    `;
+                }
+            } else if (cfg.mode === 'live') {
+                // 실서비스 모드: 데모 안내 문구 제거하고 Ezoic AI 플레이스홀더 준비
+                if (p101) p101.innerHTML = '';
+                if (p102) p102.innerHTML = '';
+                if (p103) p103.innerHTML = '';
+
+                // Ezoic 라이브 스크립트 주입 (퍼블리셔 ID가 있을 때)
+                if (cfg.ezoic_publisher_id && !document.getElementById('ezoic-script-tag')) {
+                    const sc = document.createElement('script');
+                    sc.id = 'ezoic-script-tag';
+                    sc.async = true;
+                    sc.src = `//www.ezojs.com/ezoic/sa.min.js`;
+                    document.head.appendChild(sc);
+                }
+
+                // Google AdSense 라이브 스크립트 주입 (클라이언트 ID가 있을 때)
+                if (cfg.adsense_client_id && !document.getElementById('adsense-script-tag')) {
+                    const asc = document.createElement('script');
+                    asc.id = 'adsense-script-tag';
+                    asc.async = true;
+                    asc.crossOrigin = 'anonymous';
+                    asc.src = `https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=${encodeURIComponent(cfg.adsense_client_id)}`;
+                    document.head.appendChild(asc);
+                }
+
+                // Ezoic 인스턴스 새로고침 트리거
+                try {
+                    if (window.ezstandalone && ezstandalone.cmd) {
+                        ezstandalone.cmd.push(function() {
+                            ezstandalone.showAds(101, 102, 103);
+                        });
+                    }
+                } catch (e) {
+                    console.log('Ezoic standalone pending init');
+                }
             }
         }
 

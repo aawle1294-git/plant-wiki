@@ -84,21 +84,25 @@ def ensure_profile(token: str, user_id: str, email: str = "") -> Dict[str, Any]:
 def update_profile(token: str, user_id: str, updates: Dict[str, Any]) -> Dict[str, Any]:
     updates["updated_at"] = datetime.now().isoformat()
     sb_client = get_supabase()
-    if sb_client is not None:
+    if sb_client is not None and token and token.count(".") == 2:
         try:
             res = user_client(token).table("profiles").update(updates).eq("id", user_id).execute()
             if res.data and len(res.data) > 0:
                 prof = res.data[0]
                 if prof.get("owned_items") is None:
                     prof["owned_items"] = []
+                MEMORY_PROFILES[user_id] = prof
+                _save_memory()
                 return prof
         except Exception as e:
             logger.warning("Supabase profile update error: %s", e)
-    # 인메모리 폴백
+    # 인메모리 폴백 및 로컬 영구 보존
     prof = ensure_profile(token, user_id)
     prof.update(updates)
+    MEMORY_PROFILES[user_id] = prof
     _save_memory()
     return prof
+
 
 
 def sync_profile(token: str, user_id: str, client_data: Dict[str, Any]) -> Dict[str, Any]:
