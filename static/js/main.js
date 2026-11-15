@@ -3182,7 +3182,7 @@
                 renderAdminSearchAnalytics(adminState.search_analytics, adminState.stats);
                 renderAdminSurveys(adminState.survey_data);
                 renderAdminReports(adminState.reports);
-                renderAdminAdsSettings(adminState.ads_config, adminState.ads_txt);
+                // renderAdminAdsSettings removed
 
             } catch (err) {
                 console.error('Admin Dashboard Load Error:', err);
@@ -3192,7 +3192,7 @@
 
         // 5. 탭 전환
         function switchAdminTab(tabName) {
-            const tabs = ['users', 'search', 'surveys', 'reports', 'monetization', 'summary'];
+            const tabs = ['users', 'search', 'surveys', 'reports', 'summary'];
             tabs.forEach(t => {
                 const panel = document.getElementById(`notion-tab-panel-${t}`);
                 if (panel) panel.style.display = (t === tabName) ? 'block' : 'none';
@@ -3729,7 +3729,7 @@
                 showToast(data.message || '광고 설정이 저장되었습니다. 💰', 'success');
                 if (data.config) {
                     adminState.ads_config = data.config;
-                    renderAdminAdsSettings(adminState.ads_config, adminState.ads_txt);
+                    // renderAdminAdsSettings removed
                     renderAdPlaceholders(adminState.ads_config);
                 }
             } catch (err) {
@@ -3773,109 +3773,20 @@
             }
         }
 
-        // ============ Ezoic & AdSense 프론트엔드 광고 시스템 ============
-        let currentAdsConfig = { enabled: false, mode: 'demo', ezoic_publisher_id: '', adsense_client_id: '' };
+        // ============ 광고 시스템 비활성화 (광고 UI 전면 제거) ============
+        let currentAdsConfig = { enabled: false, mode: 'off' };
 
         async function initAdSystem() {
-            try {
-                const res = await fetch('/api/ads/config');
-                const data = await res.json();
-                if (data && data.config) {
-                    currentAdsConfig = data.config;
-                    renderAdPlaceholders(currentAdsConfig);
-                }
-            } catch (e) {
-                console.warn('Ad system config load fallback to demo mode:', e);
-                renderAdPlaceholders({ enabled: true, mode: 'demo' });
-            }
+            // 광고 UI 비활성화: 슬롯 및 외부 스크립트 주입 안 함
+            return;
         }
 
         function renderAdPlaceholders(cfg) {
+            // 광고 UI 비활성화: 슬롯 표시 안 함
             const topWrap = document.getElementById('ezoic-ad-top-wrapper');
             const midWrap = document.getElementById('ezoic-ad-mid-wrapper');
             const btmWrap = document.getElementById('ezoic-ad-bottom-wrapper');
-
-            const p101 = document.getElementById('ezoic-pub-ad-placeholder-101');
-            const p102 = document.getElementById('ezoic-pub-ad-placeholder-102');
-            const p103 = document.getElementById('ezoic-pub-ad-placeholder-103');
-
-            if (!cfg || cfg.mode === 'off' || cfg.enabled === false) {
-                if (topWrap) topWrap.classList.add('hidden');
-                if (midWrap) midWrap.classList.add('hidden');
-                if (btmWrap) btmWrap.classList.add('hidden');
-                return;
-            }
-
-            // 활성화 상태인 경우 표시
-            if (topWrap) topWrap.classList.remove('hidden');
-            if (midWrap) midWrap.classList.remove('hidden');
-            if (btmWrap) btmWrap.classList.remove('hidden');
-
-            if (cfg.mode === 'demo') {
-                if (p101) {
-                    p101.innerHTML = `
-                        <div class="ezoic-ad-demo-card">
-                            <span class="ezoic-ad-demo-badge">🌱 Ezoic AI Slot 101</span>
-                            <div style="font-weight:700; color:var(--text); font-size:0.86rem;">상단 리더보드 광고 영역 (728x90 / 반응형)</div>
-                            <span style="font-size:0.75rem; opacity:0.8;">방문자가 첫 화면에서 마주하는 고수익 AI 최적화 슬롯</span>
-                        </div>
-                    `;
-                }
-                if (p102) {
-                    p102.innerHTML = `
-                        <div class="ezoic-ad-demo-card" style="padding:14px;">
-                            <span class="ezoic-ad-demo-badge" style="background:linear-gradient(135deg, #0284c7, #0369a1);">🌱 Ezoic AI Slot 102</span>
-                            <div style="font-weight:700; color:var(--text); font-size:0.84rem;">도감 본문 중간 인피드 광고 영역 (300x250 / 네이티브)</div>
-                            <span style="font-size:0.75rem; opacity:0.8;">식물 정보 탐색 중 자연스럽게 노출되어 클릭률(CTR)과 체류시간 극대화</span>
-                        </div>
-                    `;
-                }
-                if (p103) {
-                    p103.innerHTML = `
-                        <div class="ezoic-ad-demo-card">
-                            <span class="ezoic-ad-demo-badge" style="background:linear-gradient(135deg, #8b5cf6, #7c3aed);">🌱 Ezoic AI Slot 103</span>
-                            <div style="font-weight:700; color:var(--text); font-size:0.86rem;">하단 앵커 / 피드 광고 영역 (336x280 / 반응형)</div>
-                            <span style="font-size:0.75rem; opacity:0.8;">결과 열람 완료 후 다음 액션 전 EPMV를 보조하는 피드형 슬롯</span>
-                        </div>
-                    `;
-                }
-            } else if (cfg.mode === 'live') {
-                // 실서비스 모드: 데모 안내 문구 제거하고 Ezoic AI 플레이스홀더 준비
-                if (p101) p101.innerHTML = '';
-                if (p102) p102.innerHTML = '';
-                if (p103) p103.innerHTML = '';
-
-                // Ezoic 라이브 스크립트 주입 (퍼블리셔 ID가 있을 때)
-                if (cfg.ezoic_publisher_id && !document.getElementById('ezoic-script-tag')) {
-                    const sc = document.createElement('script');
-                    sc.id = 'ezoic-script-tag';
-                    sc.async = true;
-                    sc.src = `//www.ezojs.com/ezoic/sa.min.js`;
-                    document.head.appendChild(sc);
-                }
-
-                // Google AdSense 라이브 스크립트 주입 (클라이언트 ID가 있을 때)
-                if (cfg.adsense_client_id && !document.getElementById('adsense-script-tag')) {
-                    const asc = document.createElement('script');
-                    asc.id = 'adsense-script-tag';
-                    asc.async = true;
-                    asc.crossOrigin = 'anonymous';
-                    asc.src = `https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=${encodeURIComponent(cfg.adsense_client_id)}`;
-                    document.head.appendChild(asc);
-                }
-
-                // Ezoic 인스턴스 새로고침 트리거
-                try {
-                    if (window.ezstandalone && ezstandalone.cmd) {
-                        ezstandalone.cmd.push(function() {
-                            ezstandalone.showAds(101, 102, 103);
-                        });
-                    }
-                } catch (e) {
-                    console.log('Ezoic standalone pending init');
-                }
-            }
+            if (topWrap) topWrap.style.display = 'none';
+            if (midWrap) midWrap.style.display = 'none';
+            if (btmWrap) btmWrap.style.display = 'none';
         }
-
-
-

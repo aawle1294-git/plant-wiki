@@ -1268,17 +1268,23 @@
         }
         #bottom-nav {
             display: flex;
-            background: var(--card-bg);
+            background: rgba(255, 255, 255, 0.98);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
             border-top: 1px solid var(--card-border);
             border-top-left-radius: 20px;
             border-top-right-radius: 20px;
-            box-shadow: 0 -4px 30px rgba(0, 0, 0, 0.08);
+            box-shadow: 0 -4px 30px rgba(0, 0, 0, 0.12);
             margin: 0 auto;
             max-width: 600px;
             height: 70px;
             position: relative;
             pointer-events: auto;
             align-items: center;
+        }
+        [data-theme="dark"] #bottom-nav,
+        .dark #bottom-nav {
+            background: rgba(17, 30, 24, 0.98);
         }
         .nav-item {
             flex: 1;
@@ -2899,59 +2905,9 @@
             .notion-callout { margin: 14px 24px 0; }
         }
 
-        /* ============ Ezoic & Google AdSense 광고 슬롯 스타일 ============ */
-        .ad-slot-wrapper {
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            width: 100%;
-            margin: 14px auto;
-            overflow: hidden;
-            transition: all 0.3s ease;
-        }
-        .ad-slot-wrapper.hidden {
+        /* ============ 광고 슬롯 비활성화 ============ */
+        .ad-slot-wrapper, .ezoic-ad-box, .ezoic-ad-demo-card {
             display: none !important;
-        }
-        .ezoic-ad-box {
-            width: 100%;
-            min-height: 90px;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            text-align: center;
-            position: relative;
-            border-radius: 18px;
-            background: var(--tile-em-bg);
-            border: 1px dashed var(--tile-em-bd);
-            transition: all 0.25s ease;
-        }
-        .ezoic-ad-demo-card {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            padding: 18px 24px;
-            gap: 6px;
-            width: 100%;
-            color: var(--muted);
-            font-size: 0.82rem;
-        }
-        .ezoic-ad-demo-badge {
-            background: linear-gradient(135deg, #10b981, #059669);
-            color: white;
-            font-size: 10px;
-            font-weight: 800;
-            padding: 3px 10px;
-            border-radius: 9999px;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-            display: inline-flex;
-            align-items: center;
-            gap: 4px;
-        }
-        .ezoic-ad-box:hover {
-            border-color: #10b981;
-            background: rgba(16, 185, 129, 0.05);
         }
 
 

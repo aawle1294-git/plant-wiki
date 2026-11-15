@@ -1,0 +1,767 @@
+<!DOCTYPE html>
+<html lang="ko" class="h-full">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
+    <title>Plant!p — 반려식물 케어의 새로운 기준, AI로 스마트하게</title>
+    
+    <!-- SEO & Favicon -->
+    <meta name="description" content="Gemini AI와 스마트 물주기 스케줄링으로 완성하는 스마트 식물 관리 솔루션, Plant!p">
+    <link rel="icon" type="image/png" sizes="192x192" href="/static/icons/icon-192.png">
+    
+    <!-- Pretendard Font & Tailwind CDN -->
+    <link rel="stylesheet" as="style" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css" />
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Pretendard', '-apple-system', 'BlinkMacSystemFont', 'system-ui', 'Roboto', 'sans-serif'],
+                    },
+                    colors: {
+                        brand: {
+                            50: '#ecfdf5',
+                            100: '#d1fae5',
+                            200: '#a7f3d0',
+                            300: '#6ee7b7',
+                            400: '#34d399',
+                            500: '#10b981',
+                            600: '#059669',
+                            700: '#047857',
+                            800: '#065f46',
+                            900: '#064e3b',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        :root {
+            --shadow-dropdown: 0 20px 45px -10px rgba(15, 23, 42, 0.12), 0 0 0 1px rgba(15, 23, 42, 0.06);
+            --shadow-phone: 0 25px 60px -15px rgba(15, 23, 42, 0.2), 0 0 0 1px rgba(15, 23, 42, 0.05);
+        }
+
+        html, body {
+            height: 100%;
+            margin: 0;
+            padding: 0;
+            background-color: #ffffff !important;
+            color: #0f172a;
+            font-family: 'Pretendard', sans-serif;
+            overflow-x: hidden;
+            word-break: keep-all;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        /* 레퍼런스 영상과 100% 동일한 순백 + 미세 그레이 도트 그리드 */
+        .clean-dot-bg {
+            background-color: #ffffff;
+            background-image: radial-gradient(#e2e8f0 1.2px, transparent 1.2px);
+            background-size: 32px 32px;
+            background-position: 0 0;
+        }
+
+        /* ================= Stripe 스타일 정밀 모핑 드롭다운 ================= */
+        .dropdown-root {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            width: 100%;
+            pointer-events: none;
+            z-index: 1000;
+        }
+
+        .dropdown-container {
+            position: absolute;
+            top: 10px;
+            left: 0;
+            background: #ffffff;
+            border-radius: 20px;
+            box-shadow: var(--shadow-dropdown);
+            border: 1px solid rgba(226, 232, 240, 0.95);
+            transform-origin: top center;
+            opacity: 0;
+            transform: translateY(-8px) scale(0.98);
+            pointer-events: none;
+            transition: 
+                opacity 0.2s cubic-bezier(0.16, 1, 0.3, 1),
+                transform 0.2s cubic-bezier(0.16, 1, 0.3, 1),
+                width 0.25s cubic-bezier(0.16, 1, 0.3, 1),
+                height 0.25s cubic-bezier(0.16, 1, 0.3, 1),
+                left 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+            overflow: hidden;
+        }
+
+        .dropdown-container.is-active {
+            opacity: 1;
+            transform: translateY(0) scale(1);
+            pointer-events: auto;
+        }
+
+        .dropdown-arrow {
+            position: absolute;
+            top: 3px;
+            width: 14px;
+            height: 14px;
+            background: #ffffff;
+            border-top: 1px solid rgba(226, 232, 240, 0.95);
+            border-left: 1px solid rgba(226, 232, 240, 0.95);
+            transform: rotate(45deg);
+            z-index: 1001;
+            opacity: 0;
+            transition: left 0.25s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.15s ease;
+        }
+
+        .dropdown-arrow.is-active {
+            opacity: 1;
+        }
+
+        .dropdown-section {
+            position: absolute;
+            top: 0;
+            left: 0;
+            opacity: 0;
+            transform: translateX(16px);
+            transition: opacity 0.2s ease, transform 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+            pointer-events: none;
+            visibility: hidden;
+        }
+
+        .dropdown-section.active {
+            opacity: 1;
+            transform: translateX(0);
+            pointer-events: auto;
+            visibility: visible;
+            position: relative;
+        }
+
+        .nav-link-btn {
+            padding: 8px 16px;
+            font-size: 0.92rem;
+            font-weight: 500;
+            color: #475569;
+            border-radius: 9999px;
+            transition: all 0.15s ease;
+        }
+
+        .nav-link-btn:hover, .nav-link-btn.active {
+            color: #047857;
+            background: rgba(16, 185, 129, 0.08);
+        }
+
+        .sub-card {
+            border-radius: 14px;
+            padding: 14px;
+            background: #f8fafc;
+            border: 1px solid #f1f5f9;
+            transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+            cursor: pointer;
+        }
+
+        .sub-card:hover {
+            background: #ffffff;
+            border-color: #cbd5e1;
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.05);
+            transform: translateY(-2px);
+        }
+
+        /* ================= 스마트폰 목업 & 100% 진짜 Plant!p 모바일 화면 ================= */
+        .phone-mockup {
+            width: 330px;
+            height: 590px;
+            background: #ffffff;
+            border-radius: 46px;
+            box-shadow: 
+                0 0 0 9px #0f172a,
+                0 0 0 10px #334155,
+                0 25px 60px -15px rgba(15, 23, 42, 0.22),
+                0 10px 30px -8px rgba(5, 150, 105, 0.12);
+            position: relative;
+            padding: 14px 12px;
+            display: flex;
+            flex-direction: column;
+            border: 3px solid #f8fafc;
+            flex-shrink: 0;
+            overflow: hidden;
+        }
+
+        .dynamic-island {
+            width: 86px;
+            height: 22px;
+            background: #000000;
+            border-radius: 20px;
+            margin: 0 auto 10px auto;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 7px;
+            flex-shrink: 0;
+        }
+
+        /* 폰 안의 실제 Plant!p 도감 스크롤 뷰 */
+        .phone-screen-content {
+            flex: 1;
+            overflow-y: auto;
+            padding: 4px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .phone-screen-content::-webkit-scrollbar {
+            display: none;
+        }
+
+        /* 실제 Plant!p 결과 카드 미니어처 */
+        .real-plant-card {
+            background: #ffffff;
+            border: 1px solid #e2e8f0;
+            border-radius: 18px;
+            padding: 14px;
+            box-shadow: 0 4px 12px -2px rgba(0, 0, 0, 0.05);
+        }
+
+        /* 무한 롤링 티커 */
+        @keyframes marquee {
+            0% { transform: translateX(0); }
+            100% { transform: translateX(-50%); }
+        }
+
+        .marquee-track {
+            display: flex;
+            width: max-content;
+            animation: marquee 26s linear infinite;
+        }
+
+        .marquee-track:hover {
+            animation-play-state: paused;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #059669 0%, #10b981 100%);
+            box-shadow: 0 4px 14px -1px rgba(16, 185, 129, 0.35);
+            transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px -2px rgba(16, 185, 129, 0.45);
+        }
+
+        .btn-secondary {
+            background: #ffffff;
+            border: 1px solid #cbd5e1;
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.03);
+            transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        .btn-secondary:hover {
+            background: #f8fafc;
+            border-color: #94a3b8;
+            transform: translateY(-2px);
+        }
+    </style>
+</head>
+<body class="clean-dot-bg flex flex-col justify-between h-full">
+
+    <!-- ======================= 1. 상단 글로벌 네비게이션 ======================= -->
+    <header class="w-full sticky top-0 z-50 bg-white/95 backdrop-blur-md border-b border-slate-100">
+        <div class="max-w-7xl mx-auto px-6 h-18 py-3.5 flex items-center justify-between relative" id="header-inner">
+            
+            <!-- 로고 -->
+            <a href="/intro" class="flex items-center gap-2.5 group shrink-0">
+                <div class="w-9 h-9 rounded-xl bg-gradient-to-tr from-emerald-600 to-teal-400 flex items-center justify-center text-white shadow-sm group-hover:scale-105 transition-transform">
+                    <span class="text-lg">🌱</span>
+                </div>
+                <div class="flex flex-col">
+                    <span class="font-extrabold text-xl tracking-tight bg-gradient-to-r from-emerald-800 via-emerald-700 to-teal-700 bg-clip-text text-transparent">Plant!p</span>
+                    <span class="text-[8.5px] font-bold tracking-widest text-emerald-600 uppercase -mt-1">AI Intelligence</span>
+                </div>
+            </a>
+
+            <!-- 중앙 인터랙티브 네비게이션 (Stripe 모핑) -->
+            <nav class="hidden md:flex items-center gap-1 nav-links-wrap" id="main-nav">
+                <button type="button" class="nav-link-btn" data-dropdown="features">
+                    핵심 시스템
+                </button>
+                <button type="button" class="nav-link-btn" data-dropdown="guides">
+                    식물 케어 가이드
+                </button>
+                <button type="button" class="nav-link-btn" data-dropdown="about">
+                    다빈치 프로젝트
+                </button>
+            </nav>
+
+            <!-- 우측 액션 버튼 -->
+            <div class="flex items-center gap-2.5 shrink-0">
+                <a href="/demo" class="text-xs font-bold text-emerald-700 hover:text-emerald-800 px-3 py-2 transition-colors hidden sm:inline-flex items-center gap-1">
+                    <span>🔍</span> 테스트 검색
+                </a>
+                <a href="/app" class="btn-primary text-xs font-bold text-white px-4 py-2.5 rounded-full flex items-center gap-1.5">
+                    <span>Plant!p 앱 시작</span>
+                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.2" d="M14 5l7 7m0 0l-7 7m7-7H3"/>
+                    </svg>
+                </a>
+            </div>
+
+            <!-- ================= 드롭다운 모핑 컨테이너 (실제 원래 시스템만 정직하게 소개) ================= -->
+            <div class="dropdown-root" id="dropdown-root">
+                <div class="dropdown-arrow" id="dropdown-arrow"></div>
+                <div class="dropdown-container" id="dropdown-container">
+                    
+                    <!-- [1] 핵심 시스템 섹션 (실제 Plant!p 시스템 4종) -->
+                    <div class="dropdown-section" id="section-features" style="width: 580px;">
+                        <div class="p-5">
+                            <div class="text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-3 px-1">Actual Plant!p Systems</div>
+                            <div class="grid grid-cols-2 gap-3.5">
+                                
+                                <!-- 1. 실시간 AI 도감 -->
+                                <a href="/demo" class="sub-card flex flex-col justify-between group no-underline text-inherit">
+                                    <div>
+                                        <div class="flex items-center justify-between mb-1.5">
+                                            <span class="text-[10px] font-extrabold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-md">Gemini AI</span>
+                                            <span class="text-xs text-slate-400 group-hover:text-emerald-600">체험 →</span>
+                                        </div>
+                                        <h4 class="font-extrabold text-slate-800 text-xs">AI 식물 위키 생성</h4>
+                                        <p class="text-[11px] text-slate-500 mt-0.5 leading-relaxed">식물 이름 입력 즉시 학명, 물·빛·온도 환경을 요약 작성</p>
+                                    </div>
+                                    <div class="mt-3 pt-2 border-t border-slate-100 flex items-center justify-between text-[11px] font-semibold text-emerald-700">
+                                        <span>🌿 100종 이상 지원</span>
+                                        <span class="font-mono text-[10px]">FAST & ACCURATE</span>
+                                    </div>
+                                </a>
+
+                                <!-- 2. 스마트 물주기 스케줄 -->
+                                <a href="/app" class="sub-card flex flex-col justify-between group no-underline text-inherit">
+                                    <div>
+                                        <div class="flex items-center justify-between mb-1.5">
+                                            <span class="text-[10px] font-extrabold text-sky-600 bg-sky-50 px-2 py-0.5 rounded-md">스케줄러</span>
+                                            <span class="text-xs text-slate-400 group-hover:text-sky-600">열기 →</span>
+                                        </div>
+                                        <h4 class="font-extrabold text-slate-800 text-xs">스마트 물주기 D-Day</h4>
+                                        <p class="text-[11px] text-slate-500 mt-0.5 leading-relaxed">최근 물준 날짜 기록 시 다음 급수일을 자동 역산하여 보관</p>
+                                    </div>
+                                    <div class="mt-3 pt-2 border-t border-slate-100 flex items-center justify-between text-[11px] font-semibold text-sky-700">
+                                        <span>💧 D-Day 알림 연동</span>
+                                        <span class="font-mono text-[10px]">SUPABASE DB</span>
+                                    </div>
+                                </a>
+
+                                <!-- 3. 식집사 커뮤니티 -->
+                                <a href="/app" class="sub-card flex flex-col justify-between group no-underline text-inherit">
+                                    <div>
+                                        <div class="flex items-center justify-between mb-1.5">
+                                            <span class="text-[10px] font-extrabold text-teal-600 bg-teal-50 px-2 py-0.5 rounded-md">소통 공간</span>
+                                            <span class="text-xs text-slate-400 group-hover:text-teal-600">열기 →</span>
+                                        </div>
+                                        <h4 class="font-extrabold text-slate-800 text-xs">식집사 커뮤니티 피드</h4>
+                                        <p class="text-[11px] text-slate-500 mt-0.5 leading-relaxed">식물 사진·GIF 근황 공유 및 AI 실시간 클린 피드 필터링</p>
+                                    </div>
+                                    <div class="mt-3 pt-2 border-t border-slate-100 flex items-center justify-between text-[11px] font-semibold text-teal-700">
+                                        <span>👥 친구 맺기 & 리프</span>
+                                        <span class="font-mono text-[10px]">LIVE FEED</span>
+                                    </div>
+                                </a>
+
+                                <!-- 4. 맞춤 퀴즈 & 도감 북마크 -->
+                                <a href="/app" class="sub-card flex flex-col justify-between group no-underline text-inherit">
+                                    <div>
+                                        <div class="flex items-center justify-between mb-1.5">
+                                            <span class="text-[10px] font-extrabold text-purple-600 bg-purple-50 px-2 py-0.5 rounded-md">추천 도구</span>
+                                            <span class="text-xs text-slate-400 group-hover:text-purple-600">열기 →</span>
+                                        </div>
+                                        <h4 class="font-extrabold text-slate-800 text-xs">3초 맞춤 식물 찾기</h4>
+                                        <p class="text-[11px] text-slate-500 mt-0.5 leading-relaxed">내 공간과 생활 패턴에 맞는 반려식물 추천 및 도감 보관</p>
+                                    </div>
+                                    <div class="mt-3 pt-2 border-t border-slate-100 flex items-center justify-between text-[11px] font-semibold text-purple-700">
+                                        <span>📚 나의 도감 서재</span>
+                                        <span class="font-mono text-[10px]">BOOKMARK</span>
+                                    </div>
+                                </a>
+
+                            </div>
+                        </div>
+
+                        <!-- 하단 링크 바 -->
+                        <div class="px-5 py-3.5 bg-slate-50 border-t border-slate-100 flex items-center justify-between">
+                            <span class="text-xs text-slate-600">FastAPI 백엔드와 Gemini API를 결합한 실제 작동 서비스입니다.</span>
+                            <a href="/demo" class="text-xs font-bold text-emerald-600 hover:text-emerald-700">테스트 검색해보기 →</a>
+                        </div>
+                    </div>
+
+                    <!-- [2] 식물 케어 가이드 섹션 -->
+                    <div class="dropdown-section" id="section-guides" style="width: 520px;">
+                        <div class="p-5">
+                            <div class="text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-3 px-1">Plant Care Guides</div>
+                            <div class="grid grid-cols-2 gap-3">
+                                
+                                <a href="/demo" onclick="location.href='/demo'; return false;" class="sub-card group no-underline text-inherit">
+                                    <div class="flex items-center justify-between mb-1.5">
+                                        <span class="text-xl">🪴</span>
+                                        <span class="text-[10px] font-bold text-slate-400">BEGINNER</span>
+                                    </div>
+                                    <h4 class="font-extrabold text-slate-800 text-xs">초보 추천 반려식물</h4>
+                                    <p class="text-[11px] text-slate-500 mt-0.5">몬스테라, 스킨답서스 등 물주기 쉬운 식물 정보</p>
+                                </a>
+
+                                <a href="/demo" onclick="location.href='/demo'; return false;" class="sub-card group no-underline text-inherit">
+                                    <div class="flex items-center justify-between mb-1.5">
+                                        <span class="text-xl">🍅</span>
+                                        <span class="text-[10px] font-bold text-slate-400">TOMATO</span>
+                                    </div>
+                                    <h4 class="font-extrabold text-slate-800 text-xs">방울토마토 재배 가이드</h4>
+                                    <p class="text-[11px] text-slate-500 mt-0.5">곁순 제거 및 계절별 급수 노하우 요약</p>
+                                </a>
+                            </div>
+                        </div>
+
+                        <div class="px-5 py-3.5 bg-slate-50 border-t border-slate-100 flex items-center justify-between">
+                            <span class="text-xs text-slate-500">PWA 지원으로 스마트폰 홈 화면에 바로가기 설치 가능</span>
+                            <a href="/app" class="text-xs font-bold text-emerald-600 hover:text-emerald-700">도감 앱 열기 →</a>
+                        </div>
+                    </div>
+
+                    <!-- [3] 다빈치 프로젝트 섹션 -->
+                    <div class="dropdown-section" id="section-about" style="width: 430px;">
+                        <div class="p-5">
+                            <div class="text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-2.5 px-1">Project Info</div>
+                            <div class="space-y-2.5">
+                                <div class="p-3 rounded-xl bg-emerald-50/70 border border-emerald-100">
+                                    <div class="flex items-center gap-1.5 text-emerald-800 font-extrabold text-xs mb-1">
+                                        <span>🎓</span> 제10기 다빈치융합스쿨 탐구작품
+                                    </div>
+                                    <p class="text-[11px] text-emerald-700 leading-relaxed">
+                                        IT정보과학 부문 연구자 <strong>오아론(홍북초 6학년)</strong>이 직접 개발한 생성형 AI 융합 식물 도감 서비스입니다.
+                                    </p>
+                                </div>
+                                <div class="p-2.5 rounded-xl bg-slate-50 border border-slate-100 text-[11px] text-slate-600 space-y-0.5">
+                                    <div><strong>연구 주제:</strong> 식물 위키백과의 개발과 탐구</div>
+                                    <div><strong>핵심 스택:</strong> Google Gemini API, FastAPI, Supabase, PWA</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+
+        </div>
+    </header>
+
+    <!-- ======================= 2. 메인 히어로 섹션 (레퍼런스 구조 1:1) ======================= -->
+    <main class="max-w-7xl mx-auto px-6 py-6 md:py-10 flex-1 flex items-center justify-center relative">
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-14 items-center w-full">
+            
+            <!-- 좌측 헤드라인 (글자 깨짐 0%) -->
+            <div class="lg:col-span-7 flex flex-col items-start text-left space-y-5">
+                
+                <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-bold">
+                    <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                    <span>Gemini AI 기반 맞춤형 식물 도감 v2.4</span>
+                </div>
+
+                <!-- 3줄 단단한 타이포그래피 -->
+                <h1 class="text-4xl sm:text-5xl lg:text-[3.6rem] font-black tracking-tight text-slate-900 leading-[1.12]">
+                    반려식물 케어의<br>
+                    새로운 기준,<br>
+                    <span class="bg-gradient-to-r from-emerald-600 via-emerald-500 to-teal-500 bg-clip-text text-transparent">
+                        AI로 스마트하게.
+                    </span>
+                </h1>
+
+                <!-- 서브텍스트 -->
+                <p class="text-base sm:text-lg text-slate-600 max-w-lg font-normal leading-relaxed">
+                    물주기 D-Day 자동 계산부터 AI 식물 위키 요약까지.<br class="hidden sm:inline">
+                    초보 식집사부터 학교 텃밭까지 모든 식물을 건강하게 지켜주는 나만의 위키백과를 시작해 보세요.
+                </p>
+
+                <!-- 버튼 그룹 (테스트 검색으로 바로 연결!) -->
+                <div class="flex items-center gap-3.5 pt-1">
+                    <a href="/demo" class="btn-primary px-7 py-3.5 rounded-xl text-sm font-extrabold text-white flex items-center gap-2 shadow-sm">
+                        <span>🔍 테스트 검색하기</span>
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.2" d="M17 8l4 4m0 0l-4 4m4-4H3"/>
+                        </svg>
+                    </a>
+                    
+                    <a href="/app" class="btn-secondary px-6 py-3.5 rounded-xl text-sm font-bold text-slate-700 flex items-center gap-1.5">
+                        <span>정식 앱 열기</span>
+                        <svg class="w-3.5 h-3.5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+                        </svg>
+                    </a>
+                </div>
+
+                <!-- 신뢰 지표 -->
+                <div class="pt-2 flex items-center gap-5 text-xs text-slate-500 font-medium">
+                    <div class="flex items-center gap-1.5">
+                        <span class="text-emerald-500 font-bold">✓</span> 회원가입 즉시 무료 이용
+                    </div>
+                    <div class="flex items-center gap-1.5">
+                        <span class="text-emerald-500 font-bold">✓</span> 실시간 AI 도감 생성
+                    </div>
+                    <div class="flex items-center gap-1.5">
+                        <span class="text-emerald-500 font-bold">✓</span> 스마트 물주기 D-Day 관리
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- 우측 디바이스 목업 (⭐️ 가짜 사원증 완전 제거! 진짜 Plant!p 모바일 화면 탑재 ⭐️) -->
+            <div class="lg:col-span-5 flex justify-center lg:justify-end">
+                <div class="phone-mockup" id="phone-frame">
+                    
+                    <!-- 상태 바 -->
+                    <div class="flex items-center justify-between text-[10px] font-semibold text-slate-700 px-3 mb-1 shrink-0">
+                        <span>9:41</span>
+                        <div class="flex items-center gap-1">
+                            <span class="text-[10px]">📶</span>
+                            <span class="text-[10px]">⚡</span>
+                        </div>
+                    </div>
+
+                    <!-- 다이나믹 아일랜드 -->
+                    <div class="dynamic-island">
+                        <span class="w-2 h-2 rounded-full bg-slate-900 border border-slate-700"></span>
+                        <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-ping"></span>
+                    </div>
+
+                    <!-- 폰 화면 안: 진짜 Plant!p 식물 도감 카드 -->
+                    <div class="phone-screen-content">
+                        
+                        <!-- 모바일 상단 미니 검색창 뷰 -->
+                        <div class="flex items-center gap-2 p-2 rounded-xl bg-slate-100 border border-slate-200 text-xs text-slate-600">
+                            <span>🔍</span>
+                            <span class="font-bold text-slate-800">몬스테라</span>
+                            <span class="ml-auto text-[10px] bg-emerald-600 text-white font-bold px-2 py-0.5 rounded-lg">검색완료</span>
+                        </div>
+
+                        <!-- 진짜 도감 결과 카드 -->
+                        <div class="real-plant-card space-y-3">
+                            <div class="flex items-center justify-between pb-2 border-b border-slate-100">
+                                <div class="flex items-center gap-2.5">
+                                    <span class="text-3xl p-1.5 rounded-xl bg-emerald-50 border border-emerald-100">🌿</span>
+                                    <div>
+                                        <div class="flex items-center gap-1.5">
+                                            <h3 class="text-sm font-extrabold text-slate-900">몬스테라</h3>
+                                            <span class="text-[9px] font-bold px-1.5 py-0.5 rounded-md bg-emerald-100 text-emerald-800">AI 생성</span>
+                                        </div>
+                                        <p class="text-[10px] italic text-slate-400">Monstera deliciosa</p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- 한 줄 소개 -->
+                            <div class="p-2.5 rounded-xl bg-emerald-50/80 border border-emerald-100 text-[11px] text-slate-700 leading-snug">
+                                <strong>한 줄 소개:</strong> 공기정화 능력이 탁월하고 잎이 넓어 초보 식집사에게 가장 추천되는 반려식물
+                            </div>
+
+                            <!-- 4대 환경 지표 타일 -->
+                            <div class="grid grid-cols-2 gap-2 text-[10px]">
+                                <div class="p-2 rounded-lg bg-sky-50 border border-sky-100">
+                                    <div class="font-bold text-sky-800 flex items-center gap-1">
+                                        <span>💧</span> 물주기
+                                    </div>
+                                    <div class="text-slate-600 mt-0.5">약 7일 간격 (겉흙 건조 시)</div>
+                                </div>
+                                <div class="p-2 rounded-lg bg-amber-50 border border-amber-100">
+                                    <div class="font-bold text-amber-800 flex items-center gap-1">
+                                        <span>☀️</span> 햇빛
+                                    </div>
+                                    <div class="text-slate-600 mt-0.5">반양지 (직사광선 피함)</div>
+                                </div>
+                                <div class="p-2 rounded-lg bg-rose-50 border border-rose-100">
+                                    <div class="font-bold text-rose-800 flex items-center gap-1">
+                                        <span>🌡️</span> 온도
+                                    </div>
+                                    <div class="text-slate-600 mt-0.5">18 ~ 25℃ 실내 권장</div>
+                                </div>
+                                <div class="p-2 rounded-lg bg-emerald-50 border border-emerald-100">
+                                    <div class="font-bold text-emerald-800 flex items-center gap-1">
+                                        <span>🏷️</span> 난이도
+                                    </div>
+                                    <div class="text-slate-600 mt-0.5">쉬움 (초보자용)</div>
+                                </div>
+                            </div>
+
+                            <!-- 실제 기능 버튼 2개 -->
+                            <div class="space-y-1.5 pt-1">
+                                <a href="/app" class="block w-full py-2 rounded-lg text-center font-bold text-[11px] bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-xs">
+                                    📚 나의 도감에 저장하기
+                                </a>
+                                <a href="/app" class="block w-full py-2 rounded-lg text-center font-bold text-[11px] bg-sky-500 text-white shadow-xs">
+                                    💧 스마트 물주기 알림 등록
+                                </a>
+                            </div>
+                        </div>
+
+                    </div>
+
+                    <!-- 하단 홈 인디케이터 바 -->
+                    <div class="w-24 h-1 bg-slate-300 rounded-full mx-auto mt-2 mb-0.5 shrink-0"></div>
+                </div>
+            </div>
+
+        </div>
+    </main>
+
+    <!-- ======================= 3. 하단 무한 롤링 티커 ======================= -->
+    <section class="w-full py-3.5 bg-white/90 border-t border-slate-200/60 overflow-hidden">
+        <div class="max-w-7xl mx-auto px-6 mb-1.5 flex items-center justify-between">
+            <span class="text-[10px] font-extrabold uppercase tracking-widest text-slate-400">
+                TRUSTED TECH & SCIENCE ECOSYSTEM
+            </span>
+            <span class="text-[10px] font-semibold text-emerald-600">
+                제10기 다빈치융합스쿨 공식 프로젝트
+            </span>
+        </div>
+
+        <div class="relative w-full overflow-hidden flex items-center">
+            <div class="marquee-track flex items-center gap-6 text-slate-500 font-semibold text-xs select-none">
+                
+                <div class="flex items-center gap-2 px-3 py-1 rounded-lg bg-slate-50 border border-slate-100">
+                    <span class="text-sm">🤖</span>
+                    <span class="font-bold text-slate-700">Google Gemini AI</span>
+                </div>
+                <div class="flex items-center gap-2 px-3 py-1 rounded-lg bg-slate-50 border border-slate-100">
+                    <span class="text-sm">⚡</span>
+                    <span class="font-bold text-slate-700">FastAPI Backend</span>
+                </div>
+                <div class="flex items-center gap-2 px-3 py-1 rounded-lg bg-slate-50 border border-slate-100">
+                    <span class="text-sm">⚡</span>
+                    <span class="font-bold text-slate-700">Supabase Cloud DB</span>
+                </div>
+                <div class="flex items-center gap-2 px-3 py-1 rounded-lg bg-slate-50 border border-slate-100">
+                    <span class="text-sm">🎨</span>
+                    <span class="font-bold text-slate-700">Tailwind CSS</span>
+                </div>
+                <div class="flex items-center gap-2 px-3 py-1 rounded-lg bg-slate-50 border border-slate-100">
+                    <span class="text-sm">🚀</span>
+                    <span class="font-bold text-slate-700">Render Cloud Hosting</span>
+                </div>
+                <div class="flex items-center gap-2 px-3 py-1 rounded-lg bg-slate-50 border border-slate-100">
+                    <span class="text-sm">📱</span>
+                    <span class="font-bold text-slate-700">PWA Progressive App</span>
+                </div>
+                <div class="flex items-center gap-2 px-3 py-1 rounded-lg bg-slate-50 border border-slate-100">
+                    <span class="text-sm">🌱</span>
+                    <span class="font-bold text-slate-700">국립원예특작과학원 데이터</span>
+                </div>
+
+                <!-- 복제 -->
+                <div class="flex items-center gap-2 px-3 py-1 rounded-lg bg-slate-50 border border-slate-100">
+                    <span class="text-sm">🤖</span>
+                    <span class="font-bold text-slate-700">Google Gemini AI</span>
+                </div>
+                <div class="flex items-center gap-2 px-3 py-1 rounded-lg bg-slate-50 border border-slate-100">
+                    <span class="text-sm">⚡</span>
+                    <span class="font-bold text-slate-700">FastAPI Backend</span>
+                </div>
+                <div class="flex items-center gap-2 px-3 py-1 rounded-lg bg-slate-50 border border-slate-100">
+                    <span class="text-sm">⚡</span>
+                    <span class="font-bold text-slate-700">Supabase Cloud DB</span>
+                </div>
+                <div class="flex items-center gap-2 px-3 py-1 rounded-lg bg-slate-50 border border-slate-100">
+                    <span class="text-sm">🎨</span>
+                    <span class="font-bold text-slate-700">Tailwind CSS</span>
+                </div>
+                <div class="flex items-center gap-2 px-3 py-1 rounded-lg bg-slate-50 border border-slate-100">
+                    <span class="text-sm">🚀</span>
+                    <span class="font-bold text-slate-700">Render Cloud Hosting</span>
+                </div>
+                <div class="flex items-center gap-2 px-3 py-1 rounded-lg bg-slate-50 border border-slate-100">
+                    <span class="text-sm">📱</span>
+                    <span class="font-bold text-slate-700">PWA Progressive App</span>
+                </div>
+                <div class="flex items-center gap-2 px-3 py-1 rounded-lg bg-slate-50 border border-slate-100">
+                    <span class="text-sm">🌱</span>
+                    <span class="font-bold text-slate-700">국립원예특작과학원 데이터</span>
+                </div>
+
+            </div>
+        </div>
+    </section>
+
+    <!-- ======================= 4. 푸터 ======================= -->
+    <footer class="w-full py-2.5 text-center text-[11px] text-slate-400 bg-white border-t border-slate-100">
+        <p>© 2026 Plant!p. 제10기 다빈치융합스쿨 오아론 탐구과제. All rights reserved.</p>
+    </footer>
+
+    <!-- ======================= 5. Stripe 스타일 모핑 드롭다운 JS ======================= -->
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const nav = document.getElementById('main-nav');
+            const navLinks = nav.querySelectorAll('.nav-link-btn');
+            const headerInner = document.getElementById('header-inner');
+            const dropdownContainer = document.getElementById('dropdown-container');
+            const dropdownArrow = document.getElementById('dropdown-arrow');
+            const sections = document.querySelectorAll('.dropdown-section');
+            
+            let closeTimeout = null;
+
+            function openDropdown(dropdownName, triggerEl) {
+                clearTimeout(closeTimeout);
+
+                navLinks.forEach(btn => btn.classList.toggle('active', btn.dataset.dropdown === dropdownName));
+
+                const targetSection = document.getElementById(`section-${dropdownName}`);
+                if (!targetSection) return;
+
+                sections.forEach(sec => {
+                    if (sec === targetSection) {
+                        sec.classList.add('active');
+                    } else {
+                        sec.classList.remove('active');
+                    }
+                });
+
+                const width = targetSection.offsetWidth || parseInt(targetSection.style.width, 10);
+                const height = targetSection.offsetHeight;
+
+                const triggerRect = triggerEl.getBoundingClientRect();
+                const headerRect = headerInner.getBoundingClientRect();
+
+                const triggerCenterX = (triggerRect.left + triggerRect.width / 2) - headerRect.left;
+                
+                let dropdownLeft = triggerCenterX - (width / 2);
+                if (dropdownLeft < 10) dropdownLeft = 10;
+                if (dropdownLeft + width > headerRect.width - 10) {
+                    dropdownLeft = headerRect.width - width - 10;
+                }
+
+                dropdownContainer.style.width = `${width}px`;
+                dropdownContainer.style.height = `${height}px`;
+                dropdownContainer.style.left = `${dropdownLeft}px`;
+                dropdownContainer.classList.add('is-active');
+
+                dropdownArrow.style.left = `${triggerCenterX - 7}px`;
+                dropdownArrow.classList.add('is-active');
+            }
+
+            function closeDropdown() {
+                closeTimeout = setTimeout(() => {
+                    navLinks.forEach(btn => btn.classList.remove('active'));
+                    dropdownContainer.classList.remove('is-active');
+                    dropdownArrow.classList.remove('is-active');
+                    sections.forEach(sec => sec.classList.remove('active'));
+                }, 160);
+            }
+
+            navLinks.forEach(btn => {
+                btn.addEventListener('mouseenter', () => openDropdown(btn.dataset.dropdown, btn));
+                btn.addEventListener('mouseleave', () => closeDropdown());
+            });
+
+            dropdownContainer.addEventListener('mouseenter', () => clearTimeout(closeTimeout));
+            dropdownContainer.addEventListener('mouseleave', () => closeDropdown());
+        });
+    </script>
+</body>
+</html>

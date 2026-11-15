@@ -55,11 +55,11 @@ MEMORY_COMMUNITY_LIKES: Dict[str, List[str]] = _convert_to_defaultdict(_mem_data
 MEMORY_COMMUNITY_REPORTS: List[Dict[str, Any]] = _mem_data.get("MEMORY_COMMUNITY_REPORTS", [])
 MEMORY_SURVEY_RESPONSES: List[Dict[str, Any]] = _mem_data.get("MEMORY_SURVEY_RESPONSES", [])
 MEMORY_ADS_CONFIG: Dict[str, Any] = _mem_data.get("MEMORY_ADS_CONFIG", {
-    "enabled": True,
-    "mode": "demo", # 'off', 'demo', 'live'
+    "enabled": False,
+    "mode": "off", # 'off', 'demo', 'live'
     "ezoic_publisher_id": "",
     "adsense_client_id": "",
-    "auto_ads": True
+    "auto_ads": False
 })
 
 

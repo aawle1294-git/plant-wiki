@@ -1,4 +1,4 @@
-# OpenCode 작업 브리프 — Plant!p
+![alt text](image.png)# OpenCode 작업 브리프 — Plant!p
 
 너는 **코딩처(OpenCode)** 다. 총괄처(Antigravity)는 토큰 소진으로 기절한 상태다. 기획 기준은 고문처가 준 이 브리프와 레포의 `notion_project_dashboard.md`다. 추측으로 기능을 늘리지 마라.
 
