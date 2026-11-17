@@ -73,19 +73,20 @@
             display: flex;
             flex-direction: column;
             align-items: center;
-            justify-content: center;
-            padding: 20px 20px 12px;
+            justify-content: flex-start;
+            padding: 44px 20px 24px;
             opacity: 1;
             transform: translateY(0) scale(1);
             transition: opacity 0.45s ease, transform 0.5s cubic-bezier(0.22, 1, 0.36, 1), padding 0.5s ease, max-height 0.5s ease;
-            min-height: 60vh;
-            max-height: 900px;
-            overflow: hidden;
+            min-height: auto;
+            max-height: 1200px;
+            overflow: visible;
         }
         body.mode-results #hero {
             padding: 0;
             max-height: 0;
             opacity: 0;
+            overflow: hidden;
             pointer-events: none;
         }
 
@@ -926,6 +927,35 @@
         }
         #auth-modal.open { opacity: 1; pointer-events: auto; }
         .auth-panel { width: min(380px, 92vw); }
+        #auth-modal.open .modal-panel,
+        #profile-modal.open .modal-panel,
+        #settings-modal.open .modal-panel,
+        #quiz-modal.open .modal-panel,
+        #community-modal.open .modal-panel {
+            transform: translateY(0) scale(1);
+        }
+        .auth-input {
+            width: 100%;
+            display: block;
+            padding: 11px 14px;
+            border-radius: 12px;
+            border: 1.5px solid var(--search-border);
+            background: var(--search-bg);
+            color: var(--text);
+            font-size: 0.92rem;
+            outline: none;
+            transition: border-color 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+            box-sizing: border-box;
+        }
+        .auth-input:focus {
+            border-color: #10b981;
+            box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.16);
+            background: var(--card-bg);
+        }
+        .auth-input::placeholder {
+            color: var(--muted);
+            opacity: 0.8;
+        }
         #auth-error { color: #e11d48; font-size: 0.78rem; font-weight: 700; }
 
         /* 로그인 / 회원가입 탭 바 */
@@ -1005,7 +1035,7 @@
             font-size: 0.84rem;
             font-weight: 700;
             background: var(--card-bg, #fff);
-            color: var(--fg);
+            color: var(--text);
             border: 1px solid var(--card-border);
             cursor: pointer;
             transition: all 0.2s ease;

@@ -1861,12 +1861,6 @@ async def serve_plant_app(request: Request):
     # 기존 Plant!p 식물 위키백과 본체 앱 엔드포인트
     return templates.TemplateResponse(request=request, name="index.html", context={})
 
-@app.get("/demo", response_class=HTMLResponse)
-@app.get("/test-search", response_class=HTMLResponse)
-async def serve_test_search(request: Request):
-    # 홍보용 가벼운 실시간 AI 식물 검색 테스트 환경
-    return templates.TemplateResponse(request=request, name="test_search.html", context={})
-
 @app.get("/privacy", response_class=HTMLResponse)
 async def serve_privacy(request: Request):
     return templates.TemplateResponse(request=request, name="privacy.html", context={})
@@ -2416,14 +2410,24 @@ async def get_sitemap_xml(request: Request):
     <priority>1.0</priority>
   </url>
   <url>
-    <loc>{base_url}/?view=shop</loc>
+    <loc>{base_url}/app</loc>
+    <changefreq>daily</changefreq>
+    <priority>0.9</priority>
+  </url>
+  <url>
+    <loc>{base_url}/intro</loc>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>{base_url}/?view=dashboard</loc>
-    <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
+    <loc>{base_url}/privacy</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.5</priority>
+  </url>
+  <url>
+    <loc>{base_url}/terms</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.5</priority>
   </url>
 </urlset>
 """

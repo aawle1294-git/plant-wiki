@@ -300,9 +300,6 @@
 
             <!-- 우측 액션 버튼 -->
             <div class="flex items-center gap-2.5 shrink-0">
-                <a href="/demo" class="text-xs font-bold text-emerald-700 hover:text-emerald-800 px-3 py-2 transition-colors hidden sm:inline-flex items-center gap-1">
-                    <span>🔍</span> 테스트 검색
-                </a>
                 <a href="/app" class="btn-primary text-xs font-bold text-white px-4 py-2.5 rounded-full flex items-center gap-1.5">
                     <span>Plant!p 앱 시작</span>
                     <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -323,11 +320,11 @@
                             <div class="grid grid-cols-2 gap-3.5">
                                 
                                 <!-- 1. 실시간 AI 도감 -->
-                                <a href="/demo" class="sub-card flex flex-col justify-between group no-underline text-inherit">
+                                <a href="/app" class="sub-card flex flex-col justify-between group no-underline text-inherit">
                                     <div>
                                         <div class="flex items-center justify-between mb-1.5">
                                             <span class="text-[10px] font-extrabold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-md">Gemini AI</span>
-                                            <span class="text-xs text-slate-400 group-hover:text-emerald-600">체험 →</span>
+                                            <span class="text-xs text-slate-400 group-hover:text-emerald-600">열기 →</span>
                                         </div>
                                         <h4 class="font-extrabold text-slate-800 text-xs">AI 식물 위키 생성</h4>
                                         <p class="text-[11px] text-slate-500 mt-0.5 leading-relaxed">식물 이름 입력 즉시 학명, 물·빛·온도 환경을 요약 작성</p>
@@ -392,7 +389,7 @@
                         <!-- 하단 링크 바 -->
                         <div class="px-5 py-3.5 bg-slate-50 border-t border-slate-100 flex items-center justify-between">
                             <span class="text-xs text-slate-600">FastAPI 백엔드와 Gemini API를 결합한 실제 작동 서비스입니다.</span>
-                            <a href="/demo" class="text-xs font-bold text-emerald-600 hover:text-emerald-700">테스트 검색해보기 →</a>
+                            <a href="/app" class="text-xs font-bold text-emerald-600 hover:text-emerald-700">도감 앱에서 검색하기 →</a>
                         </div>
                     </div>
 
@@ -402,7 +399,7 @@
                             <div class="text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-3 px-1">Plant Care Guides</div>
                             <div class="grid grid-cols-2 gap-3">
                                 
-                                <a href="/demo" onclick="location.href='/demo'; return false;" class="sub-card group no-underline text-inherit">
+                                <a href="/app" onclick="location.href='/app'; return false;" class="sub-card group no-underline text-inherit">
                                     <div class="flex items-center justify-between mb-1.5">
                                         <span class="text-xl">🪴</span>
                                         <span class="text-[10px] font-bold text-slate-400">BEGINNER</span>
@@ -411,7 +408,7 @@
                                     <p class="text-[11px] text-slate-500 mt-0.5">몬스테라, 스킨답서스 등 물주기 쉬운 식물 정보</p>
                                 </a>
 
-                                <a href="/demo" onclick="location.href='/demo'; return false;" class="sub-card group no-underline text-inherit">
+                                <a href="/app" onclick="location.href='/app'; return false;" class="sub-card group no-underline text-inherit">
                                     <div class="flex items-center justify-between mb-1.5">
                                         <span class="text-xl">🍅</span>
                                         <span class="text-[10px] font-bold text-slate-400">TOMATO</span>
@@ -482,19 +479,12 @@
                     초보 식집사부터 학교 텃밭까지 모든 식물을 건강하게 지켜주는 나만의 위키백과를 시작해 보세요.
                 </p>
 
-                <!-- 버튼 그룹 (테스트 검색으로 바로 연결!) -->
+                <!-- 버튼 그룹 (Plant!p 정식 앱으로 연결) -->
                 <div class="flex items-center gap-3.5 pt-1">
-                    <a href="/demo" class="btn-primary px-7 py-3.5 rounded-xl text-sm font-extrabold text-white flex items-center gap-2 shadow-sm">
-                        <span>🔍 테스트 검색하기</span>
+                    <a href="/app" class="btn-primary px-8 py-3.5 rounded-xl text-sm font-extrabold text-white flex items-center gap-2 shadow-sm">
+                        <span>🌱 Plant!p 시작하기</span>
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.2" d="M17 8l4 4m0 0l-4 4m4-4H3"/>
-                        </svg>
-                    </a>
-                    
-                    <a href="/app" class="btn-secondary px-6 py-3.5 rounded-xl text-sm font-bold text-slate-700 flex items-center gap-1.5">
-                        <span>정식 앱 열기</span>
-                        <svg class="w-3.5 h-3.5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.2" d="M14 5l7 7m0 0l-7 7m7-7H3"/>
                         </svg>
                     </a>
                 </div>
