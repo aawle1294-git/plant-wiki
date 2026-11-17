@@ -2010,7 +2010,7 @@ async def save_to_history(payload: SaveToHistoryRequest, request: Request):
         raise HTTPException(status_code=500, detail=f"도감 저장에 실패했습니다: {e}")
     return {"status": "success", "message": f"{payload.name}이(가) 도감에 저장되었습니다!"}
 
-@app.post("/api/며소/register")
+@app.post("/api/auth/register")
 async def auth_register(payload: AuthRequest):
     _require_supabase()
     try:
@@ -2038,7 +2038,7 @@ async def auth_register(payload: AuthRequest):
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
 
-@app.post("/api/며소/login")
+@app.post("/api/auth/login")
 async def auth_login(payload: AuthRequest):
     _require_supabase()
     try:
@@ -2052,7 +2052,7 @@ async def auth_login(payload: AuthRequest):
     except Exception:
         raise HTTPException(status_code=401, detail="이메일 또는 비밀번호가 올바르지 않습니다.")
 
-@app.post("/api/며소/refresh")
+@app.post("/api/auth/refresh")
 async def auth_refresh(payload: RefreshTokenRequest):
     _require_supabase()
     try:
@@ -2066,7 +2066,7 @@ async def auth_refresh(payload: RefreshTokenRequest):
     except Exception as e:
         raise HTTPException(status_code=401, detail=f"토큰 갱신 실패: {str(e)}")
 
-@app.post("/api/며소/device-session")
+@app.post("/api/auth/device-session")
 async def auth_device_session(payload: DeviceSessionRequest, request: Request):
     """같은 기기에서 접속 시 영구 자동 로그인을 위한 디바이스 세션 보장 API"""
     import hashlib
@@ -2085,12 +2085,12 @@ async def auth_device_session(payload: DeviceSessionRequest, request: Request):
         "profile": prof
     }
 
-@app.get("/api/며소/me")
+@app.get("/api/auth/me")
 async def auth_me(request: Request):
     user = _get_current_user(request)
     return {"status": "success", "user": {"id": user["id"], "email": user["email"]}}
 
-@app.post("/api/며소/logout")
+@app.post("/api/auth/logout")
 async def auth_logout():
     if sb_client is not None:
         try:
@@ -2099,7 +2099,7 @@ async def auth_logout():
             pass
     return {"status": "success"}
 
-@app.get("/api/며소/oauth/google")
+@app.get("/api/auth/oauth/google")
 async def oauth_google(redirect_to: Optional[str] = None):
     if not SUPABASE_URL:
         return JSONResponse(
@@ -2117,7 +2117,7 @@ async def oauth_google(redirect_to: Optional[str] = None):
     if not target:
         FRONTEND_URL = os.getenv("FRONTEND_URL", "").strip()
         target = FRONTEND_URL or "https://plantip.onrender.com"
-    authorize_url = f"{SUPABASE_URL}/며소/v1/authorize?provider=google&redirect_to={target}"
+    authorize_url = f"{SUPABASE_URL}/auth/v1/authorize?provider=google&redirect_to={target}"
 
     # Supabase Provider 활성화 여부 사전 검사
     try:
@@ -2136,7 +2136,7 @@ async def oauth_google(redirect_to: Optional[str] = None):
     except Exception:
         return JSONResponse(content={"status": "ok", "url": authorize_url})
 
-@app.post("/api/며소/google-quick")
+@app.post("/api/auth/google-quick")
 async def google_quick_login():
     """개발 모드에서만 사용 가능한 빠른 구글 로그인 (공유 계정)."""
     if not DEV_MODE:
@@ -2603,7 +2603,7 @@ def _log_search(
 class AdminAuthPayload(BaseModel):
     password: str
 
-@app.post("/api/admin/며소")
+@app.post("/api/admin/auth")
 async def admin_auth(payload: AdminAuthPayload):
     """관리자 비밀번호 인증 (120809sc)"""
     if payload.password == ADMIN_PASSWORD:
