@@ -2010,7 +2010,7 @@ async def save_to_history(payload: SaveToHistoryRequest, request: Request):
         raise HTTPException(status_code=500, detail=f"도감 저장에 실패했습니다: {e}")
     return {"status": "success", "message": f"{payload.name}이(가) 도감에 저장되었습니다!"}
 
-@app.post("/api/auth/register")
+@app.post("/api/며소/register")
 async def auth_register(payload: AuthRequest):
     _require_supabase()
     try:
@@ -2038,7 +2038,7 @@ async def auth_register(payload: AuthRequest):
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
 
-@app.post("/api/auth/login")
+@app.post("/api/며소/login")
 async def auth_login(payload: AuthRequest):
     _require_supabase()
     try:
@@ -2052,7 +2052,7 @@ async def auth_login(payload: AuthRequest):
     except Exception:
         raise HTTPException(status_code=401, detail="이메일 또는 비밀번호가 올바르지 않습니다.")
 
-@app.post("/api/auth/refresh")
+@app.post("/api/며소/refresh")
 async def auth_refresh(payload: RefreshTokenRequest):
     _require_supabase()
     try:
@@ -2066,7 +2066,7 @@ async def auth_refresh(payload: RefreshTokenRequest):
     except Exception as e:
         raise HTTPException(status_code=401, detail=f"토큰 갱신 실패: {str(e)}")
 
-@app.post("/api/auth/device-session")
+@app.post("/api/며소/device-session")
 async def auth_device_session(payload: DeviceSessionRequest, request: Request):
     """같은 기기에서 접속 시 영구 자동 로그인을 위한 디바이스 세션 보장 API"""
     import hashlib
@@ -2085,12 +2085,12 @@ async def auth_device_session(payload: DeviceSessionRequest, request: Request):
         "profile": prof
     }
 
-@app.get("/api/auth/me")
+@app.get("/api/며소/me")
 async def auth_me(request: Request):
     user = _get_current_user(request)
     return {"status": "success", "user": {"id": user["id"], "email": user["email"]}}
 
-@app.post("/api/auth/logout")
+@app.post("/api/며소/logout")
 async def auth_logout():
     if sb_client is not None:
         try:
@@ -2099,7 +2099,7 @@ async def auth_logout():
             pass
     return {"status": "success"}
 
-@app.get("/api/auth/oauth/google")
+@app.get("/api/며소/oauth/google")
 async def oauth_google(redirect_to: Optional[str] = None):
     if not SUPABASE_URL:
         return JSONResponse(
@@ -2117,7 +2117,7 @@ async def oauth_google(redirect_to: Optional[str] = None):
     if not target:
         FRONTEND_URL = os.getenv("FRONTEND_URL", "").strip()
         target = FRONTEND_URL or "https://plantip.onrender.com"
-    authorize_url = f"{SUPABASE_URL}/auth/v1/authorize?provider=google&redirect_to={target}"
+    authorize_url = f"{SUPABASE_URL}/며소/v1/authorize?provider=google&redirect_to={target}"
 
     # Supabase Provider 활성화 여부 사전 검사
     try:
@@ -2136,7 +2136,7 @@ async def oauth_google(redirect_to: Optional[str] = None):
     except Exception:
         return JSONResponse(content={"status": "ok", "url": authorize_url})
 
-@app.post("/api/auth/google-quick")
+@app.post("/api/며소/google-quick")
 async def google_quick_login():
     """개발 모드에서만 사용 가능한 빠른 구글 로그인 (공유 계정)."""
     if not DEV_MODE:
@@ -2393,16 +2393,17 @@ async def get_robots_txt(request: Request):
     base_url = f"{scheme}://{host}"
     content = f"""User-agent: *
 Allow: /
-Sitemap: {base_url}/냣드메.틔
+Sitemap: {base_url}/sitemap.xml
 """
     return Response(content=content, media_type="text/plain")
 
-@app.get("/냣드메.틔", include_in_schema=False)
+@app.get("/sitemap.xml", include_in_schema=False)
+@app.get("/sitemap", include_in_schema=False)
 async def get_sitemap_xml(request: Request):
     scheme = request.headers.get("x-forwarded-proto", request.url.scheme)
     host = request.headers.get("x-forwarded-host", request.headers.get("host", "plantip.onrender.com"))
     base_url = f"{scheme}://{host}"
-    content = f"""<?틔 version="1.0" encoding="UTF-8"?>
+    content = f"""<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <url>
     <loc>{base_url}/</loc>
@@ -2411,6 +2412,11 @@ async def get_sitemap_xml(request: Request):
   </url>
   <url>
     <loc>{base_url}/app</loc>
+    <changefreq>daily</changefreq>
+    <priority>0.9</priority>
+  </url>
+  <url>
+    <loc>{base_url}/wiki</loc>
     <changefreq>daily</changefreq>
     <priority>0.9</priority>
   </url>
@@ -2431,7 +2437,7 @@ async def get_sitemap_xml(request: Request):
   </url>
 </urlset>
 """
-    return Response(content=content, media_type="application/틔")
+    return Response(content=content, media_type="application/xml")
 
 # ===================== 설문조사 API =====================
 # 인메모리 설문 응답 임시 저장 (Supabase 미연결 시 폴백)
@@ -2603,7 +2609,7 @@ def _log_search(
 class AdminAuthPayload(BaseModel):
     password: str
 
-@app.post("/api/admin/auth")
+@app.post("/api/admin/며소")
 async def admin_auth(payload: AdminAuthPayload):
     """관리자 비밀번호 인증 (120809sc)"""
     if payload.password == ADMIN_PASSWORD:
@@ -2870,11 +2876,27 @@ async def admin_update_user(payload: AdminUserUpdatePayload):
         current_prof["leaf_balance"] = max(0, current_prof.get("leaf_balance", 0) + payload.leaf_delta)
         updated_fields["leaf_balance"] = current_prof["leaf_balance"]
 
-    # 인메모리 저장
+    # 인메모리 저장 및 영구 동기화 마킹
+    current_prof["admin_updated"] = True
+    current_prof["admin_updated_at"] = datetime.now().isoformat()
     MEMORY_PROFILES[user_id] = current_prof
+    user_email = current_prof.get("email")
+    if user_email:
+        MEMORY_PROFILES[user_email] = current_prof
+
+    # 트랜잭션 기록
+    tx = {
+        "id": str(uuid.uuid4()),
+        "user_id": user_id,
+        "amount": current_prof["leaf_balance"],
+        "reason": "admin_grant",
+        "balance_after": current_prof["leaf_balance"],
+        "created_at": datetime.now().isoformat(),
+    }
+    MEMORY_LEAF_TX[user_id].append(tx)
     _save_memory()
 
-    # Supabase 저장 시도
+    # Supabase 저장 시도 (유저 로그인 시점에 ensure_profile에서 본인 토큰으로도 100% 자동 동기화됨)
     if sb is not None:
         try:
             sb.table("profiles").update(updated_fields).eq("id", user_id).execute()

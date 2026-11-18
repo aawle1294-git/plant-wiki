@@ -10,18 +10,53 @@ logger = logging.getLogger("plant_wiki.profile")
 
 def ensure_profile(token: str, user_id: str, email: str = "") -> Dict[str, Any]:
     sb_client = get_supabase()
+    prof = None
     if sb_client is not None:
         try:
             res = user_client(token).table("profiles").select("*").eq("id", user_id).execute()
             if res.data and len(res.data) > 0:
                 prof = res.data[0]
-                if prof.get("owned_items") is None:
-                    prof["owned_items"] = []
-                return prof
+            else:
+                now_iso = datetime.now().isoformat()
+                new_profile = {
+                    "id": user_id,
+                    "email": email,
+                    "nickname": "새싹 식집사",
+                    "avatar_emoji": "🌱",
+                    "title": "새싹",
+                    "leaf_balance": 50,
+                    "streak_count": 1,
+                    "last_checkin_date": None,
+                    "owned_items": [],
+                    "created_at": now_iso,
+                    "updated_at": now_iso,
+                }
+                ins_res = user_client(token).table("profiles").insert(new_profile).execute()
+                tx = {
+                    "user_id": user_id,
+                    "amount": 50,
+                    "reason": "welcome_bonus",
+                    "balance_after": 50,
+                    "created_at": now_iso,
+                }
+                try:
+                    user_client(token).table("leaf_transactions").insert(tx).execute()
+                except Exception:
+                    pass
+                if ins_res.data and len(ins_res.data) > 0:
+                    prof = ins_res.data[0]
+                else:
+                    prof = new_profile
+        except Exception as e:
+            logger.warning("Supabase profile ensure error: %s", e)
+
+    # 인메모리 폴백 (Supabase 없을 때)
+    if not prof:
+        if user_id not in MEMORY_PROFILES:
             now_iso = datetime.now().isoformat()
-            new_profile = {
+            MEMORY_PROFILES[user_id] = {
                 "id": user_id,
-                "email": email,
+                "email": email or "demo@plantwiki.local",
                 "nickname": "새싹 식집사",
                 "avatar_emoji": "🌱",
                 "title": "새싹",
@@ -32,52 +67,84 @@ def ensure_profile(token: str, user_id: str, email: str = "") -> Dict[str, Any]:
                 "created_at": now_iso,
                 "updated_at": now_iso,
             }
-            ins_res = user_client(token).table("profiles").insert(new_profile).execute()
-            tx = {
+            MEMORY_LEAF_TX[user_id].append({
+                "id": str(uuid.uuid4()),
                 "user_id": user_id,
                 "amount": 50,
                 "reason": "welcome_bonus",
                 "balance_after": 50,
                 "created_at": now_iso,
-            }
-            user_client(token).table("leaf_transactions").insert(tx).execute()
-            if ins_res.data and len(ins_res.data) > 0:
-                prof = ins_res.data[0]
-                if prof.get("owned_items") is None:
-                    prof["owned_items"] = []
-                return prof
-            return new_profile
-        except Exception as e:
-            logger.warning("Supabase profile ensure error: %s", e)
-            
-    # 인메모리 폴백
-    if user_id not in MEMORY_PROFILES:
-        now_iso = datetime.now().isoformat()
-        MEMORY_PROFILES[user_id] = {
-            "id": user_id,
-            "email": email or "demo@plantwiki.local",
-            "nickname": "새싹 식집사",
-            "avatar_emoji": "🌱",
-            "title": "새싹",
-            "leaf_balance": 50,
-            "streak_count": 1,
-            "last_checkin_date": None,
-            "owned_items": [],
-            "created_at": now_iso,
-            "updated_at": now_iso,
-        }
-        MEMORY_LEAF_TX[user_id].append({
-            "id": str(uuid.uuid4()),
-            "user_id": user_id,
-            "amount": 50,
-            "reason": "welcome_bonus",
-            "balance_after": 50,
-            "created_at": now_iso,
-        })
-        _save_memory()
-    prof = MEMORY_PROFILES[user_id]
+            })
+            _save_memory()
+        prof = MEMORY_PROFILES[user_id]
+
     if prof.get("owned_items") is None:
         prof["owned_items"] = []
+
+    # =========================================================================
+    # 중요: 관리자(Admin)가 부여한 리프/칭호/닉네임/아이템 반영 및 Supabase 영구 동기화
+    # (Supabase RLS로 인해 관리자 단독으로는 타인 DB 업데이트가 안 되므로,
+    #  해당 유저가 로그인하여 ensure_profile에 들어온 순간 본인 권한으로 DB에 영구 반영)
+    # =========================================================================
+    mem_prof = MEMORY_PROFILES.get(user_id)
+    if not mem_prof and email:
+        mem_prof = MEMORY_PROFILES.get(email)
+
+    if mem_prof:
+        needs_sync = False
+        db_updates = {}
+
+        # 1. 리프 잔액: 관리자가 지정한 잔액이 더 높거나 변경된 경우
+        if "leaf_balance" in mem_prof:
+            mem_leaf = int(mem_prof["leaf_balance"])
+            cur_leaf = int(prof.get("leaf_balance") or 0)
+            if mem_leaf != cur_leaf:
+                prof["leaf_balance"] = mem_leaf
+                db_updates["leaf_balance"] = mem_leaf
+                needs_sync = True
+
+        # 2. 칭호
+        if mem_prof.get("title") and mem_prof["title"] != prof.get("title"):
+            prof["title"] = mem_prof["title"]
+            db_updates["title"] = mem_prof["title"]
+            needs_sync = True
+
+        # 3. 닉네임
+        if mem_prof.get("nickname") and mem_prof["nickname"] != prof.get("nickname"):
+            prof["nickname"] = mem_prof["nickname"]
+            db_updates["nickname"] = mem_prof["nickname"]
+            needs_sync = True
+
+        # 4. 아바타
+        if mem_prof.get("avatar_emoji") and mem_prof["avatar_emoji"] != prof.get("avatar_emoji"):
+            prof["avatar_emoji"] = mem_prof["avatar_emoji"]
+            db_updates["avatar_emoji"] = mem_prof["avatar_emoji"]
+            needs_sync = True
+
+        # 5. 소유 아이템 목록
+        mem_owned = mem_prof.get("owned_items") or []
+        cur_owned = prof.get("owned_items") or []
+        merged_owned = list(dict.fromkeys(cur_owned + [str(x) for x in mem_owned]))
+        if len(merged_owned) > len(cur_owned):
+            prof["owned_items"] = merged_owned
+            db_updates["owned_items"] = merged_owned
+            needs_sync = True
+
+        # 유저 본인의 인증 토큰으로 Supabase DB에 영구 갱신
+        if needs_sync and sb_client is not None and token and token.count(".") == 2:
+            db_updates["updated_at"] = datetime.now().isoformat()
+            try:
+                user_client(token).table("profiles").update(db_updates).eq("id", user_id).execute()
+                logger.info(f"[AdminSync] Successfully synced admin grants for user {user_id}: {db_updates}")
+            except Exception as sync_err:
+                logger.warning(f"[AdminSync] Failed to sync admin grants to Supabase: {sync_err}")
+
+        # 로컬 메모리 상태도 최신 prof로 동기화
+        MEMORY_PROFILES[user_id] = prof
+        if email:
+            MEMORY_PROFILES[email] = prof
+        _save_memory()
+
     return prof
 
 
@@ -102,7 +169,6 @@ def update_profile(token: str, user_id: str, updates: Dict[str, Any]) -> Dict[st
     MEMORY_PROFILES[user_id] = prof
     _save_memory()
     return prof
-
 
 
 def sync_profile(token: str, user_id: str, client_data: Dict[str, Any]) -> Dict[str, Any]:
@@ -186,7 +252,7 @@ def add_leaf_transaction(token: str, user_id: str, amount: int, reason: str) -> 
         "created_at": now_iso,
     }
     sb_client = get_supabase()
-    if sb_client is not None:
+    if sb_client is not None and token and token.count(".") == 2:
         try:
             user_client(token).table("leaf_transactions").insert(tx_payload).execute()
         except Exception as e:

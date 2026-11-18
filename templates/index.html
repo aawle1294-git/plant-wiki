@@ -184,6 +184,246 @@
         </div>
     </section>
 
+
+    <!-- ===================== 대표 식물 백과 & 식집사 가이드 (SEO 콘텐츠) ===================== -->
+    <section id="home-encyclopedia" class="max-w-4xl mx-auto px-4 mt-12 mb-16 space-y-10 select-text">
+        <!-- 섹션 헤더 -->
+        <div class="text-center space-y-2">
+            <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-bold"
+                style="background: var(--tile-em-bg); color: #059669;">
+                <span>📚</span> Plant!p 오리지널 가이드
+            </div>
+            <h2 class="text-2xl sm:text-3xl font-extrabold tracking-tight" style="color: var(--text);">
+                🌿 인기 반려식물 백과 & 홈가드닝 가이드
+            </h2>
+            <p class="text-xs sm:text-sm max-w-xl mx-auto" style="color: var(--muted);">
+                실내에서 건강하게 키우기 좋은 대표 식물들의 상세 정보와 식물학적 특징, 물주기 핵심 팁을 확인해 보세요.
+            </p>
+        </div>
+
+        <!-- 대표 식물 6종 카드 그리드 -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-5">
+            <!-- 1. 몬스테라 -->
+            <article class="p-5 rounded-2xl border transition-all duration-300 hover:shadow-lg cursor-pointer flex flex-col justify-between"
+                style="background: var(--card-bg); border-color: var(--card-border);"
+                onclick="searchPlant('몬스테라')" title="클릭하여 몬스테라 AI 위키 열기">
+                <div class="space-y-3">
+                    <div class="flex items-center gap-3">
+                        <span class="text-4xl p-2 rounded-xl" style="background: var(--tile-em-bg)">🪴</span>
+                        <div>
+                            <h3 class="font-extrabold text-lg flex items-center gap-1.5" style="color: var(--text);">
+                                몬스테라 델리시오사
+                                <span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300">초보 추천</span>
+                            </h3>
+                            <p class="text-xs italic" style="color: var(--muted);">Monstera deliciosa · 천남성과</p>
+                        </div>
+                    </div>
+                    <p class="text-xs leading-relaxed" style="color: var(--text);">
+                        이국적인 타공 잎이 매력적인 플랜테리어의 대표 주자입니다. 실내 포름알데히드 및 휘발성 유기화합물을 흡수하는 뛰어난 공기 정화 식물입니다.
+                    </p>
+                    <div class="grid grid-cols-3 gap-2 text-[11px] font-medium pt-1">
+                        <div class="p-2 rounded-xl text-center" style="background: var(--tile-em-bg); color: var(--tile-em-tx);"><span class="block text-[10px] opacity-75">☀️ 햇빛</span> 반양지 (간접광)</div>
+                        <div class="p-2 rounded-xl text-center" style="background: var(--tile-blue-bg); color: var(--tile-blue-tx);"><span class="block text-[10px] opacity-75">💧 물주기</span> 겉흙 2cm 마를때</div>
+                        <div class="p-2 rounded-xl text-center" style="background: var(--tile-amber-bg); color: var(--tile-amber-tx);"><span class="block text-[10px] opacity-75">🌡️ 적정온도</span> 18~25°C</div>
+                    </div>
+                </div>
+                <div class="mt-4 pt-3 border-t flex items-center justify-between text-xs font-bold" style="border-color: var(--card-border); color: #059669;">
+                    <span>💡 잎의 먼지를 닦아주면 광합성 촉진</span><span>AI 도감 보기 →</span>
+                </div>
+            </article>
+
+            <!-- 2. 스파티필름 -->
+            <article class="p-5 rounded-2xl border transition-all duration-300 hover:shadow-lg cursor-pointer flex flex-col justify-between"
+                style="background: var(--card-bg); border-color: var(--card-border);"
+                onclick="searchPlant('스파티필름')" title="클릭하여 스파티필름 AI 위키 열기">
+                <div class="space-y-3">
+                    <div class="flex items-center gap-3">
+                        <span class="text-4xl p-2 rounded-xl" style="background: var(--tile-em-bg)">🌿</span>
+                        <div>
+                            <h3 class="font-extrabold text-lg flex items-center gap-1.5" style="color: var(--text);">
+                                스파티필름
+                                <span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-300">공기정화 1위</span>
+                            </h3>
+                            <p class="text-xs italic" style="color: var(--muted);">Spathiphyllum spp. · 천남성과</p>
+                        </div>
+                    </div>
+                    <p class="text-xs leading-relaxed" style="color: var(--text);">
+                        NASA 선정 최고의 공기정화 식물로, 아세톤·암모니아·알코올 등 생활 유해물질을 탁월하게 흡수하며 우아한 하얀 불염포 꽃을 피웁니다.
+                    </p>
+                    <div class="grid grid-cols-3 gap-2 text-[11px] font-medium pt-1">
+                        <div class="p-2 rounded-xl text-center" style="background: var(--tile-em-bg); color: var(--tile-em-tx);"><span class="block text-[10px] opacity-75">☀️ 햇빛</span> 반음지~반양지</div>
+                        <div class="p-2 rounded-xl text-center" style="background: var(--tile-blue-bg); color: var(--tile-blue-tx);"><span class="block text-[10px] opacity-75">💧 물주기</span> 잎 살짝 처질때</div>
+                        <div class="p-2 rounded-xl text-center" style="background: var(--tile-amber-bg); color: var(--tile-amber-tx);"><span class="block text-[10px] opacity-75">🌡️ 적정온도</span> 15~25°C</div>
+                    </div>
+                </div>
+                <div class="mt-4 pt-3 border-t flex items-center justify-between text-xs font-bold" style="border-color: var(--card-border); color: #059669;">
+                    <span>💡 물이 부족하면 잎이 숙여 신호를 줌</span><span>AI 도감 보기 →</span>
+                </div>
+            </article>
+
+            <!-- 3. 산세베리아 -->
+            <article class="p-5 rounded-2xl border transition-all duration-300 hover:shadow-lg cursor-pointer flex flex-col justify-between"
+                style="background: var(--card-bg); border-color: var(--card-border);"
+                onclick="searchPlant('산세베리아')" title="클릭하여 산세베리아 AI 위키 열기">
+                <div class="space-y-3">
+                    <div class="flex items-center gap-3">
+                        <span class="text-4xl p-2 rounded-xl" style="background: var(--tile-em-bg)">🪴</span>
+                        <div>
+                            <h3 class="font-extrabold text-lg flex items-center gap-1.5" style="color: var(--text);">
+                                산세베리아
+                                <span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-purple-100 text-purple-800 dark:bg-purple-950 dark:text-purple-300">침실 추천</span>
+                            </h3>
+                            <p class="text-xs italic" style="color: var(--muted);">Sansevieria trifasciata · 비짜루과</p>
+                        </div>
+                    </div>
+                    <p class="text-xs leading-relaxed" style="color: var(--text);">
+                        밤에 기공을 열어 이산화탄소를 흡수하고 풍부한 산소와 음이온을 방출하는 대표적인 CAM 식물로, 침실과 공부방에 가장 적합합니다.
+                    </p>
+                    <div class="grid grid-cols-3 gap-2 text-[11px] font-medium pt-1">
+                        <div class="p-2 rounded-xl text-center" style="background: var(--tile-em-bg); color: var(--tile-em-tx);"><span class="block text-[10px] opacity-75">☀️ 햇빛</span> 음지~양지 모두</div>
+                        <div class="p-2 rounded-xl text-center" style="background: var(--tile-blue-bg); color: var(--tile-blue-tx);"><span class="block text-[10px] opacity-75">💧 물주기</span> 흙 바짝 마른후</div>
+                        <div class="p-2 rounded-xl text-center" style="background: var(--tile-amber-bg); color: var(--tile-amber-tx);"><span class="block text-[10px] opacity-75">🌡️ 적정온도</span> 13~30°C</div>
+                    </div>
+                </div>
+                <div class="mt-4 pt-3 border-t flex items-center justify-between text-xs font-bold" style="border-color: var(--card-border); color: #059669;">
+                    <span>💡 건조에 강해 물을 적게 줄수록 건강</span><span>AI 도감 보기 →</span>
+                </div>
+            </article>
+
+            <!-- 4. 금전수 -->
+            <article class="p-5 rounded-2xl border transition-all duration-300 hover:shadow-lg cursor-pointer flex flex-col justify-between"
+                style="background: var(--card-bg); border-color: var(--card-border);"
+                onclick="searchPlant('금전수')" title="클릭하여 금전수 AI 위키 열기">
+                <div class="space-y-3">
+                    <div class="flex items-center gap-3">
+                        <span class="text-4xl p-2 rounded-xl" style="background: var(--tile-em-bg)">💰</span>
+                        <div>
+                            <h3 class="font-extrabold text-lg flex items-center gap-1.5" style="color: var(--text);">
+                                금전수 (돈나무)
+                                <span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300">개업/선물</span>
+                            </h3>
+                            <p class="text-xs italic" style="color: var(--muted);">Zamioculcas zamiifolia · 천남성과</p>
+                        </div>
+                    </div>
+                    <p class="text-xs leading-relaxed" style="color: var(--text);">
+                        엽전 모양의 동글동글하고 윤기 나는 잎이 줄기에 촘촘히 돋아나 재물과 번영을 불러온다는 풍수 식물입니다. 지하 줄기에 수분을 비축합니다.
+                    </p>
+                    <div class="grid grid-cols-3 gap-2 text-[11px] font-medium pt-1">
+                        <div class="p-2 rounded-xl text-center" style="background: var(--tile-em-bg); color: var(--tile-em-tx);"><span class="block text-[10px] opacity-75">☀️ 햇빛</span> 반음지</div>
+                        <div class="p-2 rounded-xl text-center" style="background: var(--tile-blue-bg); color: var(--tile-blue-tx);"><span class="block text-[10px] opacity-75">💧 물주기</span> 월 1~2회 흠뻑</div>
+                        <div class="p-2 rounded-xl text-center" style="background: var(--tile-amber-bg); color: var(--tile-amber-tx);"><span class="block text-[10px] opacity-75">🌡️ 적정온도</span> 16~26°C</div>
+                    </div>
+                </div>
+                <div class="mt-4 pt-3 border-t flex items-center justify-between text-xs font-bold" style="border-color: var(--card-border); color: #059669;">
+                    <span>💡 과습 주의! 속흙까지 바싹 마를 때 관수</span><span>AI 도감 보기 →</span>
+                </div>
+            </article>
+
+            <!-- 5. 테이블야자 -->
+            <article class="p-5 rounded-2xl border transition-all duration-300 hover:shadow-lg cursor-pointer flex flex-col justify-between"
+                style="background: var(--card-bg); border-color: var(--card-border);"
+                onclick="searchPlant('테이블야자')" title="클릭하여 테이블야자 AI 위키 열기">
+                <div class="space-y-3">
+                    <div class="flex items-center gap-3">
+                        <span class="text-4xl p-2 rounded-xl" style="background: var(--tile-em-bg)">🌴</span>
+                        <div>
+                            <h3 class="font-extrabold text-lg flex items-center gap-1.5" style="color: var(--text);">
+                                테이블야자
+                                <span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300">반려동물 안전</span>
+                            </h3>
+                            <p class="text-xs italic" style="color: var(--muted);">Chamaedorea elegans · 야자과</p>
+                        </div>
+                    </div>
+                    <p class="text-xs leading-relaxed" style="color: var(--text);">
+                        책상 위에 올려놓고 키울 수 있는 귀여운 소형 야자로, 천연 가습 효과와 벤젠·포름알데히드 흡수력이 우수하며 강아지·고양이에게 무독성입니다.
+                    </p>
+                    <div class="grid grid-cols-3 gap-2 text-[11px] font-medium pt-1">
+                        <div class="p-2 rounded-xl text-center" style="background: var(--tile-em-bg); color: var(--tile-em-tx);"><span class="block text-[10px] opacity-75">☀️ 햇빛</span> 밝은 그늘</div>
+                        <div class="p-2 rounded-xl text-center" style="background: var(--tile-blue-bg); color: var(--tile-blue-tx);"><span class="block text-[10px] opacity-75">💧 물주기</span> 겉흙 마른 1~2일후</div>
+                        <div class="p-2 rounded-xl text-center" style="background: var(--tile-amber-bg); color: var(--tile-amber-tx);"><span class="block text-[10px] opacity-75">🌡️ 적정온도</span> 18~24°C</div>
+                    </div>
+                </div>
+                <div class="mt-4 pt-3 border-t flex items-center justify-between text-xs font-bold" style="border-color: var(--card-border); color: #059669;">
+                    <span>💡 공중 분무로 잎 끝 마름 예방</span><span>AI 도감 보기 →</span>
+                </div>
+            </article>
+
+            <!-- 6. 로즈마리 -->
+            <article class="p-5 rounded-2xl border transition-all duration-300 hover:shadow-lg cursor-pointer flex flex-col justify-between"
+                style="background: var(--card-bg); border-color: var(--card-border);"
+                onclick="searchPlant('로즈마리')" title="클릭하여 로즈마리 AI 위키 열기">
+                <div class="space-y-3">
+                    <div class="flex items-center gap-3">
+                        <span class="text-4xl p-2 rounded-xl" style="background: var(--tile-em-bg)">🌱</span>
+                        <div>
+                            <h3 class="font-extrabold text-lg flex items-center gap-1.5" style="color: var(--text);">
+                                로즈마리
+                                <span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-300">향기/허브</span>
+                            </h3>
+                            <p class="text-xs italic" style="color: var(--muted);">Rosmarinus officinalis · 꿀풀과</p>
+                        </div>
+                    </div>
+                    <p class="text-xs leading-relaxed" style="color: var(--text);">
+                        청량한 피톤치드 향이 뇌 활동과 집중력을 높여주는 지중해 원산의 허브입니다. 요리의 풍미를 더하고 천연 항균 및 해충 기피 효과를 가집니다.
+                    </p>
+                    <div class="grid grid-cols-3 gap-2 text-[11px] font-medium pt-1">
+                        <div class="p-2 rounded-xl text-center" style="background: var(--tile-em-bg); color: var(--tile-em-tx);"><span class="block text-[10px] opacity-75">☀️ 햇빛</span> 직사광선 6h+</div>
+                        <div class="p-2 rounded-xl text-center" style="background: var(--tile-blue-bg); color: var(--tile-blue-tx);"><span class="block text-[10px] opacity-75">💧 물주기</span> 겉흙 마르면 즉시</div>
+                        <div class="p-2 rounded-xl text-center" style="background: var(--tile-amber-bg); color: var(--tile-amber-tx);"><span class="block text-[10px] opacity-75">🌡️ 적정온도</span> 15~25°C</div>
+                    </div>
+                </div>
+                <div class="mt-4 pt-3 border-t flex items-center justify-between text-xs font-bold" style="border-color: var(--card-border); color: #059669;">
+                    <span>💡 바람(통풍)이 생명! 창가·베란다 필수</span><span>AI 도감 보기 →</span>
+                </div>
+            </article>
+        </div>
+
+        <!-- 초보 식집사 가드닝 필수 3원칙 -->
+        <div class="p-6 sm:p-8 rounded-3xl border space-y-4" style="background: var(--tile-em-bg); border-color: var(--card-border);">
+            <div class="flex items-center gap-2">
+                <span class="text-2xl">💡</span>
+                <h3 class="font-extrabold text-base sm:text-lg" style="color: var(--text);">초보 식집사를 위한 실패 없는 실내 가드닝 3원칙</h3>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
+                <div class="p-4 rounded-2xl border space-y-1.5" style="background: var(--card-bg); border-color: var(--card-border);">
+                    <p class="font-bold flex items-center gap-1.5" style="color: var(--text);"><span>💧</span> 1. 흙 속을 만져보고 물주기</p>
+                    <p style="color: var(--muted);" class="leading-relaxed">정해진 요일에 주는 기계적 물주기는 과습의 원인입니다. 젓가락이나 손가락을 흙에 2~3cm 넣어 마른 것을 확인하고 화분 밑으로 물이 빠져나올 때까지 흠뻑 주세요.</p>
+                </div>
+                <div class="p-4 rounded-2xl border space-y-1.5" style="background: var(--card-bg); border-color: var(--card-border);">
+                    <p class="font-bold flex items-center gap-1.5" style="color: var(--text);"><span>🌬️</span> 2. 하루 30분 이상 맞바람 환기</p>
+                    <p style="color: var(--muted);" class="leading-relaxed">식물에게 빛만큼 중요한 것이 바람입니다. 통풍이 부족하면 흙 속 수분이 정체되어 뿌리가 썩거나 응애, 깍지벌레 등 병충해가 발생하기 쉽습니다.</p>
+                </div>
+                <div class="p-4 rounded-2xl border space-y-1.5" style="background: var(--card-bg); border-color: var(--card-border);">
+                    <p class="font-bold flex items-center gap-1.5" style="color: var(--text);"><span>☀️</span> 3. 식물별 알맞은 광량 맞추기</p>
+                    <p style="color: var(--muted);" class="leading-relaxed">열대 관엽식물은 커튼을 통과한 부드러운 간접광을 선호하며, 허브나 다육이는 강한 직사광선이 필요합니다. 식물에 맞는 자리를 찾아주세요.</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- 자주 묻는 질문 (FAQ) -->
+        <div class="space-y-4">
+            <h3 class="font-extrabold text-base sm:text-lg flex items-center gap-2" style="color: var(--text);"><span>❓</span> 자주 묻는 식물 케어 질문 (FAQ)</h3>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
+                <div class="p-4 rounded-2xl border space-y-1" style="background: var(--card-bg); border-color: var(--card-border);">
+                    <p class="font-bold text-emerald-600 dark:text-emerald-400">Q. 식물 잎 끝이 갈색으로 마르는 이유는?</p>
+                    <p style="color: var(--muted);" class="leading-relaxed">실내 공기 습도가 너무 낮거나(건조), 반대로 뿌리가 과습으로 상했을 때 나타납니다. 흙 상태를 점검하고 분무기로 잎 주변에 수분을 보충해 주세요.</p>
+                </div>
+                <div class="p-4 rounded-2xl border space-y-1" style="background: var(--card-bg); border-color: var(--card-border);">
+                    <p class="font-bold text-emerald-600 dark:text-emerald-400">Q. 반려견/반려묘에게 안전한 식물은?</p>
+                    <p style="color: var(--muted);" class="leading-relaxed">테이블야자, 보스턴고사리, 아레카야자는 반려동물에게 무독성입니다. 몬스테라나 스파티필름은 옥살산칼슘이 있어 닿지 않는 높은 곳에 배치하세요.</p>
+                </div>
+                <div class="p-4 rounded-2xl border space-y-1" style="background: var(--card-bg); border-color: var(--card-border);">
+                    <p class="font-bold text-emerald-600 dark:text-emerald-400">Q. 겨울철 베란다 화분 관리는?</p>
+                    <p style="color: var(--muted);" class="leading-relaxed">온도가 10°C 이하로 떨어지면 거실 안쪽으로 옮기고, 물주기 주기를 대폭 늘려 건조하게 유지해야 냉해를 막을 수 있습니다.</p>
+                </div>
+                <div class="p-4 rounded-2xl border space-y-1" style="background: var(--card-bg); border-color: var(--card-border);">
+                    <p class="font-bold text-emerald-600 dark:text-emerald-400">Q. Plant!p의 식물 정보는 어떻게 생성되나요?</p>
+                    <p style="color: var(--muted);" class="leading-relaxed">Google Gemini AI와 공공 식물학 DB를 바탕으로 실시간 맞춤 분석 도감을 작성합니다. 위 검색창에 궁금한 식물을 자유롭게 검색해 보세요!</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
     <!-- ===================== 결과 스테이지 ===================== -->
     <main id="stage" class="max-w-4xl mx-auto">
         <!-- Loading -->
