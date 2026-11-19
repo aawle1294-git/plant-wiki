@@ -8,5 +8,10 @@
   "python.autoComplete.extraPaths": [
     "${workspaceFolder}",
     "C:\\Python314\\Lib\\site-packages"
+  ],
+  "pyrefly.pythonInterpreter": "C:\\Python314\\python.exe",
+  "pyrefly.search_path": [
+    "${workspaceFolder}",
+    "C:\\Python314\\Lib\\site-packages"
   ]
 }
