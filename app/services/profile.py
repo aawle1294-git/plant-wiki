@@ -252,11 +252,14 @@ def add_leaf_transaction(token: str, user_id: str, amount: int, reason: str) -> 
         "created_at": now_iso,
     }
     sb_client = get_supabase()
-    if sb_client is not None and token and token.count(".") == 2:
+    if sb_client is not None:
         try:
             user_client(token).table("leaf_transactions").insert(tx_payload).execute()
         except Exception as e:
             logger.warning("Supabase leaf_transaction insert error: %s", e)
+            tx_payload["id"] = str(uuid.uuid4())
+            MEMORY_LEAF_TX[user_id].append(tx_payload)
+            _save_memory()
     else:
         tx_payload["id"] = str(uuid.uuid4())
         MEMORY_LEAF_TX[user_id].append(tx_payload)

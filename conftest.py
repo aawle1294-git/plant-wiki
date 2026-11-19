@@ -60,7 +60,7 @@ class _FakeAuth:
             raise Exception("Invalid login credentials")
         return SimpleNamespace(
             user=SimpleNamespace(id=u["id"], email=email),
-            session=SimpleNamespace(access_token=u["token"]),
+            session=SimpleNamespace(access_token=u["token"], refresh_token=f"refresh-{email}"),
         )
 
     def get_user(self, jwt=None):
@@ -146,8 +146,36 @@ class FakeSupabase:
 
 @pytest.fixture(autouse=True)
 def fake_sb(monkeypatch):
-    monkeypatch.setattr(app_module, "generate_plant_with_gemini", lambda plant_name: None)
+    from app.services.memory import MEMORY_PROFILES, MEMORY_LEAF_TX, MEMORY_WATERING_SCHEDULES, MEMORY_HISTORY
+    MEMORY_PROFILES.clear()
+    MEMORY_LEAF_TX.clear()
+    MEMORY_WATERING_SCHEDULES.clear()
+    MEMORY_HISTORY.clear()
+    import main
+    import app.services.database as db_mod
+    import app.core.deps as deps_mod
+    import app.services.profile as prof_mod
+    import app.services.history as hist_mod
+    import app.services.watering as water_mod
     fake = FakeSupabase()
+    monkeypatch.setattr(main, "generate_plant_with_gemini", lambda plant_name: None, raising=False)
+    monkeypatch.setattr(main, "sb_client", fake, raising=False)
+    monkeypatch.setattr(main, "sb", fake, raising=False)
+    monkeypatch.setattr(main, "get_supabase", lambda: fake, raising=False)
+    monkeypatch.setattr(main, "_user_client", lambda token: fake, raising=False)
+    monkeypatch.setattr(main, "user_client", lambda token: fake, raising=False)
+    monkeypatch.setattr(db_mod, "sb_client", fake, raising=False)
+    monkeypatch.setattr(db_mod, "get_supabase", lambda: fake, raising=False)
+    monkeypatch.setattr(db_mod, "user_client", lambda token: fake, raising=False)
+    monkeypatch.setattr(db_mod, "sb", fake, raising=False)
+    monkeypatch.setattr(deps_mod, "get_supabase", lambda: fake, raising=False)
+    monkeypatch.setattr(prof_mod, "get_supabase", lambda: fake, raising=False)
+    monkeypatch.setattr(prof_mod, "user_client", lambda token: fake, raising=False)
+    monkeypatch.setattr(hist_mod, "get_supabase", lambda: fake, raising=False)
+    monkeypatch.setattr(hist_mod, "user_client", lambda token: fake, raising=False)
+    monkeypatch.setattr(water_mod, "get_supabase", lambda: fake, raising=False)
+    monkeypatch.setattr(water_mod, "user_client", lambda token: fake, raising=False)
+    monkeypatch.setattr(app_module, "generate_plant_with_gemini", lambda plant_name: None, raising=False)
     monkeypatch.setattr(app_module, "sb_client", fake, raising=False)
     monkeypatch.setattr(app_module, "_user_client", lambda token: fake, raising=False)
     return fake

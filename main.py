@@ -872,7 +872,7 @@ CUCUMBER_DETAIL_URL = _assemble_deep_link(
     "https://www.coupang.com/vp/products/9627720579?itemId=28754407684&vendorItemId=95693224442&q=%EC%98%A4%EC%9D%B4%EC%94%A8%EC%95%97&searchId=50ae76f313385969&sourceType=search&itemsCount=60&searchRank=0&rank=0&traceId=msvr7cej"
 )
 EGGPLANT_DETAIL_URL = _assemble_deep_link(
-    "https://www.coupang.com/vp/products/9349374161?itemId=27734919226&vendorItemId=94696140005&q=%EA%B0%80%EC%A7%80+%EC%94%A8%EC%95%97&searchId=0a62츄뮤11677984&sourceType=search&itemsCount=60&searchRank=3&rank=3&traceId=msvr9g1g"
+    "https://www.coupang.com/vp/products/9349374161?itemId=27734919226&vendorItemId=94696140005&q=%EA%B0%80%EC%A7%80+%EC%94%A8%EC%95%97&searchId=0a62cbab11677984&sourceType=search&itemsCount=60&searchRank=3&rank=3&traceId=msvr9g1g"
 )
 # Step 1 (2026-08-16): UI 노출 4종 + 상추 상세 딥링크 승격
 MONSTERA_DETAIL_URL = _assemble_deep_link(
@@ -1654,7 +1654,6 @@ PLANT_ALIAS_MAP = {
     "머니트리": "파키라",
     "moneytree": "파키라",
     "애플민트": "애플민트",
-    "민트": "애플민트",
     "페퍼민트": "애플민트",
     "박하": "애플민트",
     "applemint": "애플민트",
@@ -1987,6 +1986,15 @@ async def search_plant(payload: SearchRequest, request: Request):
         is_member=is_member
     )
 
+    # 로그인 사용자 검색 시 도감(plant_history)에 자동 등록
+    if is_member and search_user_id and search_user_id != "demo-user":
+        try:
+            tok = current_u.get("token") if current_u else None
+            if tok:
+                _insert_plant_history(tok, search_user_id, plant_data)
+        except Exception as e:
+            logger.warning("Search history auto-insert failed: %s", e)
+
     return {"status": "success", "source": source, "data": _serialize_plant(plant_data)}
 
 
@@ -2010,7 +2018,7 @@ async def save_to_history(payload: SaveToHistoryRequest, request: Request):
         raise HTTPException(status_code=500, detail=f"도감 저장에 실패했습니다: {e}")
     return {"status": "success", "message": f"{payload.name}이(가) 도감에 저장되었습니다!"}
 
-@app.post("/api/며소/register")
+@app.post("/api/auth/register")
 async def auth_register(payload: AuthRequest):
     _require_supabase()
     try:
@@ -2020,10 +2028,11 @@ async def auth_register(payload: AuthRequest):
             raise HTTPException(status_code=400, detail="회원가입에 실패했습니다. (이메일 확인이 필요할 수 있어요)")
         
         # 세션이 있으면 바로 로그인 처리, 없으면 이메일 확인 필요 안내
-        if res.session and res.session.access_token:
+        sess = getattr(res, "session", None)
+        if sess and getattr(sess, "access_token", None):
             return {
                 "status": "success",
-                "access_token": res.session.access_token,
+                "access_token": sess.access_token,
                 "user": {"id": user.id, "email": user.email},
                 "message": "회원가입 완료! 자동으로 로그인되었습니다."
             }
@@ -2038,21 +2047,24 @@ async def auth_register(payload: AuthRequest):
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
 
-@app.post("/api/며소/login")
+@app.post("/api/auth/login")
 async def auth_login(payload: AuthRequest):
     _require_supabase()
     try:
-        res = sb_client.auth.sign_in_with_password({"email": payload.email, "password": payload.password})
+        sb = get_supabase() or sb_client
+        res = sb.auth.sign_in_with_password({"email": payload.email, "password": payload.password})
+        rt = getattr(res.session, "refresh_token", None) if getattr(res, "session", None) else None
         return {
             "status": "success",
             "access_token": res.session.access_token,
-            "refresh_token": res.session.refresh_token if res.session else None,
+            "refresh_token": rt,
             "user": {"id": res.user.id, "email": res.user.email},
         }
-    except Exception:
-        raise HTTPException(status_code=401, detail="이메일 또는 비밀번호가 올바르지 않습니다.")
+    except Exception as e:
+        logger.error(f"[AuthLoginError] {type(e).__name__}: {e}")
+        raise HTTPException(status_code=401, detail=f"이메일 또는 비밀번호가 올바르지 않습니다. ({type(e).__name__}: {e})")
 
-@app.post("/api/며소/refresh")
+@app.post("/api/auth/refresh")
 async def auth_refresh(payload: RefreshTokenRequest):
     _require_supabase()
     try:
@@ -2066,7 +2078,7 @@ async def auth_refresh(payload: RefreshTokenRequest):
     except Exception as e:
         raise HTTPException(status_code=401, detail=f"토큰 갱신 실패: {str(e)}")
 
-@app.post("/api/며소/device-session")
+@app.post("/api/auth/device-session")
 async def auth_device_session(payload: DeviceSessionRequest, request: Request):
     """같은 기기에서 접속 시 영구 자동 로그인을 위한 디바이스 세션 보장 API"""
     import hashlib
@@ -2085,12 +2097,12 @@ async def auth_device_session(payload: DeviceSessionRequest, request: Request):
         "profile": prof
     }
 
-@app.get("/api/며소/me")
+@app.get("/api/auth/me")
 async def auth_me(request: Request):
     user = _get_current_user(request)
     return {"status": "success", "user": {"id": user["id"], "email": user["email"]}}
 
-@app.post("/api/며소/logout")
+@app.post("/api/auth/logout")
 async def auth_logout():
     if sb_client is not None:
         try:
@@ -2099,7 +2111,7 @@ async def auth_logout():
             pass
     return {"status": "success"}
 
-@app.get("/api/며소/oauth/google")
+@app.get("/api/auth/oauth/google")
 async def oauth_google(redirect_to: Optional[str] = None):
     if not SUPABASE_URL:
         return JSONResponse(
@@ -2117,7 +2129,7 @@ async def oauth_google(redirect_to: Optional[str] = None):
     if not target:
         FRONTEND_URL = os.getenv("FRONTEND_URL", "").strip()
         target = FRONTEND_URL or "https://plantip.onrender.com"
-    authorize_url = f"{SUPABASE_URL}/며소/v1/authorize?provider=google&redirect_to={target}"
+    authorize_url = f"{SUPABASE_URL}/auth/v1/authorize?provider=google&redirect_to={target}"
 
     # Supabase Provider 활성화 여부 사전 검사
     try:
@@ -2136,7 +2148,7 @@ async def oauth_google(redirect_to: Optional[str] = None):
     except Exception:
         return JSONResponse(content={"status": "ok", "url": authorize_url})
 
-@app.post("/api/며소/google-quick")
+@app.post("/api/auth/google-quick")
 async def google_quick_login():
     """개발 모드에서만 사용 가능한 빠른 구글 로그인 (공유 계정)."""
     if not DEV_MODE:
@@ -2609,7 +2621,7 @@ def _log_search(
 class AdminAuthPayload(BaseModel):
     password: str
 
-@app.post("/api/admin/며소")
+@app.post("/api/admin/auth")
 async def admin_auth(payload: AdminAuthPayload):
     """관리자 비밀번호 인증 (120809sc)"""
     if payload.password == ADMIN_PASSWORD:
