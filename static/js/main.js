@@ -925,13 +925,31 @@
 
         // 구글 OAuth 로그인
         async function signInWithGoogle() {
+            const btn = document.querySelector('.google-auth-btn');
+            const originalHTML = btn ? btn.innerHTML : '';
             try {
-                showToast('Google 인증 연결 확인 중... 🌿', 'info');
+                // 버튼 로딩 상태로 변경 (중복 클릭 방지)
+                if (btn) {
+                    btn.disabled = true;
+                    btn.innerHTML = `<span style="display:inline-flex;align-items:center;gap:6px;">
+                        <svg width="16" height="16" viewBox="0 0 24 24" style="animation:spin 1s linear infinite">
+                            <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="3" fill="none" stroke-dasharray="30 70"/>
+                        </svg>Google 연결 중...</span>`;
+                }
+                showToast('Google 로그인 준비 중... 🌿', 'info');
                 const redirectUrl = encodeURIComponent(window.location.origin);
-                const res = await fetch(`/api/auth/oauth/google?redirect_to=${redirectUrl}`);
+
+                // AbortController로 10초 타임아웃 설정 (Render cold-start 대비)
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), 10000);
+                const res = await fetch(`/api/auth/oauth/google?redirect_to=${redirectUrl}`, {
+                    signal: controller.signal
+                });
+                clearTimeout(timeoutId);
                 const data = await res.json();
 
                 if (data.status === 'ok' && data.url) {
+                    showToast('Google 로그인 페이지로 이동합니다... 🌿', 'info');
                     window.location.href = data.url;
                     return;
                 }
@@ -941,11 +959,20 @@
                     return;
                 }
 
-                // 기타 오류 시에도 quickGoogleLogin 시도하지 않음
                 showToast('Google 로그인 연결에 실패했습니다.', 'error');
             } catch (err) {
                 console.warn('Google sign-in error:', err);
-                showToast('네트워크 오류로 Google 로그인을 시도할 수 없습니다.', 'error');
+                if (err.name === 'AbortError') {
+                    showToast('서버 응답 시간 초과입니다. 잠시 후 다시 시도해 주세요. ⏱️', 'error');
+                } else {
+                    showToast('네트워크 오류로 Google 로그인을 시도할 수 없습니다.', 'error');
+                }
+            } finally {
+                // 버튼 원상복구
+                if (btn) {
+                    btn.disabled = false;
+                    btn.innerHTML = originalHTML;
+                }
             }
         }
 
